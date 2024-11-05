@@ -73,23 +73,23 @@ export const searchUser = (data) => async (dispatch) => {
   }
 }
 
-export const updateUser = (data) => async (dispatch) => {
+export const updateUser = (formData, token) => async (dispatch) => {
   try {
-    const res = await fetch(`${BASE_API_URL}/api/users/update/${data.id}`, {
-      method: "GET",
+    const res = await fetch(`${BASE_API_URL}/api/users/update`, { 
+      method: "PUT",
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${data.token}`
+        Authorization: `Bearer ${token}` 
       },
+      body: formData,
+    });
 
-    })
     const resData = await res.json();
-    //console.log("search", resData);
     dispatch({ type: UPDATE_USER, payload: resData });
   } catch (error) {
     console.log("catch error:", error);
   }
-}
+};
+
 
 export const logout = () => async (dispatch) => {
   localStorage.removeItem("token");

@@ -21,7 +21,8 @@ export const authReducer = (store = initialvalue, { type, payload }) => {
     return { ...store, searchUser: payload }
   }
   else if (type === UPDATE_USER) {
-    return { ...store, updateUser: payload }
+    return {
+      ...store, reqUser: payload };
   }
   return store;
 }

@@ -22,17 +22,17 @@ export const createMessage = (messageData) => async (dispatch) => {
 
 export const getAllMessage = (reqData) => async (dispatch) => {
   try {
-    const res = await fetch(`${BASE_API_URL}/api/messages/chat/${reqData.chatId}`, {
-      method:"GET",
+    const { chatId, token, pageSize = 7, pageNumber = 0 } = reqData;
+    const res = await fetch(`${BASE_API_URL}/api/messages/chat/${chatId}?pageSize=${pageSize}&pageNumber=${pageNumber}`, {
+       method:"GET",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${reqData.token}`,
+        Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(reqData.data)
     })
     const data = await res.json();
     //if (resData.jwt) localStorage.setItem("token", resData.jwt)
-    console.log("get all message", data);
+    //console.log("get all message", data);
     dispatch({ type: GET_ALL_MESSAGE, payload: data });
   } catch (error) {
     console.log("catch error:", error);

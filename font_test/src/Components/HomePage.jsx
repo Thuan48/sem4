@@ -211,7 +211,7 @@ export const HomePage = () => {
     setIsConnect(true);
     if (stompClient && currentChat && currentChat.id && chatList) {
       stompClient.subscribe("/group/" + currentChat.id.toString, onMessageRevice);
-      stompClient.subscribe(`/chatUser/${currentChat.id.toString}`, onUserUpdateReceive);
+      stompClient.subscribe(`/chatUser/${currentChat.id.toString()}`, onUserUpdateReceive);
       stompClient.subscribe(`/topic/notifications`, onNotificationReceive);
       console.log("Connected to WebSocket");
       setIsConnected(true);
@@ -251,7 +251,7 @@ export const HomePage = () => {
   const onMessageRevice = (payload) => {
     const reciveMessage = JSON.parse(payload.body);
     const { chat,content, timestamp } = reciveMessage;
-    setMessages([...messages, reciveMessage]);
+    setMessages((prevMessages) => [...prevMessages, reciveMessage]);
     setChatList((prevChats) => {
       return prevChats.map((chatItem) => {
         if (chatItem.id === chat.id) {
@@ -282,21 +282,18 @@ export const HomePage = () => {
   }, [chat.chats, isConnected, stompClient]);
 
   const onUserUpdateReceive = (payload) => {
+    const updatedChats = JSON.parse(payload.body);
     setChatList((prevChats) => {
-      const updatedChats = prevChats.map((chatItem) => {
-        if (chatItem.id === chat.id) {
+      return prevChats.map((chatItem) => {
+        if (chatItem.id === updatedChats.id) {
           return {
             ...chatItem,
-            lastMessageContent: content,
-            lastMessageTimestamp: timestamp,
-            unreadCount: (chatItem.unreadCount || 0) + 1,
+            ...updatedChats,
           };
         }
         return chatItem;
       });
-      return updatedChats;
     });
-
   };
   
   useEffect(() => {
@@ -425,7 +422,7 @@ export const HomePage = () => {
                       />
                     </div>
                   );
-                })}
+                })} 
               </div>
             </div>
           )}

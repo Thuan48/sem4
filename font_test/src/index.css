@@ -1,12 +1,12 @@
 body {
   margin: 0;
   max-width: 100vw;
-  background-image: url('https://img3.thuthuatphanmem.vn/uploads/2019/10/10/background-dong-sao-roi_032849186.gif');
   background-repeat: no-repeat;
   background-position: center;
   background-size: cover;
   font-family: 'Inter', sans-serif;
   background-size: 200%;
+  background-color: darkgrey;
 }
 .bg-background {
   background-color: #f8f9fa;

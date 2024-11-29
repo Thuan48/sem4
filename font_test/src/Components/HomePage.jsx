@@ -1,18 +1,17 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { TbCircleDashed } from "react-icons/tb"
 import { AiOutlineSearch, AiOutlineDelete } from "react-icons/ai"
-import { MdGroupAdd, MdOutlinePersonRemoveAlt1 } from "react-icons/md";
+import { MdDynamicFeed, MdGroupAdd, MdOutlinePersonRemoveAlt1 } from "react-icons/md";
 import { GrLogout } from "react-icons/gr";
 import { IoIosPersonAdd } from "react-icons/io";
 import { FaSignOutAlt } from "react-icons/fa";
-import { BsEmojiSmile, BsMicFill, BsThreeDotsVertical, BsSun, BsMoon } from "react-icons/bs"
+import { BsEmojiSmile, BsMicFill, BsThreeDotsVertical, BsSun, BsMoon, BsArrowUp } from "react-icons/bs"
 import { ImAttachment, ImProfile } from "react-icons/im"
 import { useNavigate } from 'react-router-dom';
 import { IconButton, Menu, MenuItem, Snackbar, SnackbarContent } from '@mui/material';
 import { useDispatch, useSelector } from 'react-redux';
-import { logout, currenUser, searchUser } from '../Redux/Auth/Action';
-import { addUserGroup, createChat, deleteChat, getChats, getUserChat, removeUserGroup } from '../Redux/Chat/Action';
-import { createMessage, getAllMessage } from '../Redux/Message/Action';
+import { logout, currenUser, searchUser, updateUser, updateProfile } from '../Redux/Auth/Action';
+import { addUserGroup, createChat, deleteChat, getChatMembers, getChats, getUserChat, removeUserGroup } from '../Redux/Chat/Action';
+import { createMessage, deleteMessage, getAllMessage } from '../Redux/Message/Action';
 import SockJS from "sockjs-client/dist/sockjs";
 import { over } from "stompjs";
 import ChatCard from './ChatCard/ChatCard';
@@ -22,6 +21,9 @@ import CreateGroup from './Group/CreateGroup';
 import AddMemberModal from './Group/AddMemberModal';
 import RemoveMemberModal from './Group/RemoveMemberModal';
 import { sendNotification } from '../Redux/Notification/Action';
+import EmojiPicker from 'emoji-picker-react';
+import UserProfileCard from './Profile/UserProfileCard';
+import UserCard from './Profile/UserCard';
 
 export const HomePage = () => {
   const [isConnect, setIsConnect] = useState(false);
@@ -31,6 +33,7 @@ export const HomePage = () => {
   const [currentChat, setCurrentChat] = useState(null);
   const [content, setContent] = useState("");
   const [isProfile, setProfile] = useState(false);
+  const [userProfile, setUserProfile] = useState(false);
   const [isGroup, setIsGroup] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
   const [isDarkMode, setIsDarkMode] = useState(true);
@@ -44,6 +47,11 @@ export const HomePage = () => {
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [isConnected, setIsConnected] = useState(false);
   const [chatList, setChatList] = useState([]);
+  const [image, setImage] = useState(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [userCardOpen, setUserCardOpen] = useState(false);
+  const [selectedUserCardId, setSelectedUserCardId] = useState(null);
+  const [anchorElSecondMenu, setAnchorElSecondMenu] = useState(null);
 
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -51,8 +59,16 @@ export const HomePage = () => {
   const token = localStorage.getItem("token");
   const messageEndRef = useRef(null);
   const open = Boolean(anchorEl);
-  const isAdmin = currentChat?.admin?.some(admin => admin.id === auth.reqUser.id);
+  const isAdmin = currentChat?.userAdminIds?.includes(auth.reqUser.id) || false;
+  const pageSize = 7;
+  const openSecondMenu = Boolean(anchorElSecondMenu);
 
+  const handleCloseSecondMenu = () => {
+    setAnchorElSecondMenu(null);
+  };
+  const handleEmojiClick = (emojiObject) => {
+    setContent(prevContent => prevContent + emojiObject.emoji);
+  };
   const handleShowSnackbar = (message) => {
     setSnackbarMessage(message);
     setSnackbarOpen(true);
@@ -67,7 +83,9 @@ export const HomePage = () => {
     setOpenAddMemberModal(false);
   };
   const scrollToBottom = () => {
-    messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messageEndRef.current) {
+      messageEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
   };
   const handleMessageScroll = (e) => {
     const { scrollTop } = e.target;
@@ -75,8 +93,8 @@ export const HomePage = () => {
       setLoadingMessages(true);
       const previousPage = messagePage - 1;
       if (previousPage >= 0) {
-        dispatch(getAllMessage({ chatId: currentChat.id, token, page: previousPage }))
-          .then(() => {
+        dispatch(getAllMessage({ chatId: currentChat.id, token, pageSize, pageNumber: previousPage }))
+          .then((newMessages) => {
             setMessagePage(previousPage);
             setLoadingMessages(false);
           })
@@ -88,8 +106,8 @@ export const HomePage = () => {
       }
     }
   };
-
   const handleClick = (event) => setAnchorEl(event.currentTarget);
+  const handleClickSecond = (event) => setAnchorElSecondMenu(event.currentTarget);
   const handleClose = () => setAnchorEl(null);
   const handleLogout = () => {
     dispatch(logout());
@@ -105,24 +123,61 @@ export const HomePage = () => {
     dispatch(createChat({ token, resData: { userId } }));
     setQuerys("");
   };
-  const handleCreateNewMessage = () => {
+  const handleCreateNewMessage = async () => {
     if (currentChat) {
-      dispatch(createMessage({ token, resData: { chatId: currentChat.id, content } }));
-      setContent("");
+      try {
+        if (!content && !image) return;
+        const messageData = {
+          userId: auth.reqUser.id,
+          chatId: currentChat.id,
+          content: content,
+          image: image,
+          token: token,
+        };
+
+        dispatch(createMessage(messageData));
+        setContent("");
+        setImage(null);
+      } catch (error) {
+        console.error("Error sending message:", error);
+      }
     } else {
       console.error("No current chat selected for sending message");
     }
   };
   const handleNavigate = () => setProfile(true);
+  const handleNavigateProfile = () => {
+    setUserProfile(true);
+    handleClose();
+  };
+  const handleOpenUserCard = (userId) => {
+    setSelectedUserCardId(userId);
+    setUserCardOpen(true);
+  }
   const handleBack = () => {
     dispatch(currenUser(token));
     setProfile(false);
   }
+  const handlebackProfile = () => {
+    dispatch(currenUser(token));
+    setUserProfile(false);
+  }
   const handleCurrentChat = (item) => {
     setCurrentChat(item)
+    setChatList((prevChats) => {
+      return prevChats.map((chatItem) => {
+        if (chatItem.id === item.id) {
+          return {
+            ...chatItem,
+            unreadCount: 0,
+          };
+        }
+        return chatItem;
+      });
+    });
     if (stompClient) {
       stompClient.subscribe("/group/" + item.id.toString(), onMessageRevice);
-      stompClient.subscribe(`/chatUser/${item.id.toString()}`, onUserUpdateReceive);
+      stompClient.subscribe("/group/" + item.id.toString() + "/delete", onDeleteMessageReceive);
     }
   };
   const handleAddMember = () => {
@@ -154,8 +209,14 @@ export const HomePage = () => {
   };
   const handleOpenRemoveMemberModal = () => {
     if (currentChat) {
-      setUsersInGroup(currentChat.users);
-      setOpenRemoveMemberModal(true);
+      dispatch(getChatMembers(currentChat.id, token))
+        .then((members) => {
+          setUsersInGroup(members);
+          setOpenRemoveMemberModal(true);
+        })
+        .catch((error) => {
+          console.error("Error fetching chat members:", error);
+        });
     }
   };
   const handleRemoveMember = (userId) => {
@@ -187,16 +248,35 @@ export const HomePage = () => {
   const toggleDarkMode = () => {
     setIsDarkMode((prevMode) => !prevMode);
   };
-
-  const connect = () => {
-    const sock = new SockJS("http://localhost:8080/ws");
-    const temp = over(sock);
-    setStompClient(temp);
-    const headers = {
-      Authorization: `Bearer ${token}`,
-      "X-XSRF-TOKEN": getCookie("XSRF-TOKEN")
+  const handleDeleteMessage = (messageId) => {
+    dispatch(deleteMessage(messageId, token, stompClient, currentChat.id))
+      .then(() => {
+        setMessages(prevMessages => prevMessages.filter(msg => msg.id !== messageId));
+      })
+      .catch(error => {
+        console.error("Error deleting message:", error);
+      });
+  };
+  const getOtherUserId = () => {
+    if (currentChat && !currentChat.group) {
+      return currentChat.userId || null;
     }
-    temp.connect(headers, onConnect, onError);
+    return null;
+  };
+  const connect = async () => {
+    try {
+      const sock = new SockJS("http://localhost:8080/ws");
+      const temp = over(sock);
+      setStompClient(temp);
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        "X-XSRF-TOKEN": getCookie("XSRF-TOKEN")
+      };
+
+      await temp.connect(headers, onConnect, onError);
+    } catch (error) {
+      console.error("Error connecting to WebSocket:", error);
+    }
   }
   function getCookie(name) {
     const value = `; ${document.cookie}`;
@@ -209,11 +289,14 @@ export const HomePage = () => {
   }
   const onConnect = () => {
     setIsConnect(true);
-    if (stompClient && currentChat && currentChat.id && chatList) {
-      stompClient.subscribe("/group/" + currentChat.id.toString, onMessageRevice);
-      stompClient.subscribe(`/chatUser/${currentChat.id.toString()}`, onUserUpdateReceive);
+    if (stompClient) {
+      stompClient.subscribe('/chatList', onChatListReceive);
       stompClient.subscribe(`/topic/notifications`, onNotificationReceive);
-      console.log("Connected to WebSocket");
+      stompClient.subscribe('/users/updates', onUserUpdateReceive);
+      if (currentChat && currentChat.id) {
+        stompClient.subscribe("/group/" + currentChat.id.toString(), onMessageRevice);
+        stompClient.subscribe("/group/" + currentChat.id.toString() + "/delete", onDeleteMessageReceive);
+      }
       setIsConnected(true);
     } else {
       console.error("stompClient is undefined or currentChat is null");
@@ -222,11 +305,13 @@ export const HomePage = () => {
 
   useEffect(() => {
     if (isConnect && stompClient && auth.reqUser && currentChat) {
-      const subcription = stompClient.subscribe("/group/" + currentChat.id.toString, onMessageRevice);
-      const Usersubcription = stompClient.subscribe(`/chatUser/${currentChat.id.toString}`, onUserUpdateReceive)
+      const messsageSub = stompClient.subscribe("/group/" + currentChat.id.toString(), onMessageRevice);
+      const deleteMesssageSub = stompClient.subscribe("/group/" + currentChat.id.toString() + "/delete");
+      const userUpdateSubscription = stompClient.subscribe('/topic/userUpdates', onUserUpdateReceive);
       return () => {
-        subcription.unsubscribe();
-        Usersubcription.unsubscribe();
+        messsageSub.unsubscribe();
+        deleteMesssageSub.unsubscribe();
+        userUpdateSubscription.unsubscribe();
       }
     }
   }, [isConnect, stompClient, auth.reqUser, currentChat]);
@@ -240,31 +325,57 @@ export const HomePage = () => {
       stompClient.send("/app/message", {}, JSON.stringify(message.newMessage));
     }
   }, [message.newMessage, stompClient])
-  useEffect(() => {
-    if (!stompClient || !currentChat || chat.chats) {
-      console.log('No stompClient or currentChat');
-      return;
-    }
-    stompClient.send("/app/updateChat",{},JSON.stringify(chat.chats))
-  }, [stompClient, currentChat, chat.chats]); 
 
+  const onUserUpdateReceive = (payload) => {
+    console.log('onUserUpdateReceive payload:', payload);
+    console.log('Payload headers:', payload.headers);
+    console.log('Payload command:', payload.command);
+    console.log('Payload body (raw):', payload.body);
+
+    // Parse the payload body
+    const userUpdate = JSON.parse(payload.body);
+    console.log('Parsed userUpdate:', userUpdate);
+    dispatch(updateUser(userUpdate));
+    dispatch(updateProfile(userUpdate));
+  };
+  const onChatListReceive = (payload) => {
+    const chatList = JSON.parse(payload.body);
+    setChatList(chatList);
+  };
+  const onDeleteMessageReceive = (payload) => {
+    const deletedMessage = JSON.parse(payload.body);
+    setMessages(prevMessages => prevMessages.filter(msg => msg.id !== deletedMessage.id));
+  };
   const onMessageRevice = (payload) => {
     const reciveMessage = JSON.parse(payload.body);
-    const { chat,content, timestamp } = reciveMessage;
-    setMessages((prevMessages) => [...prevMessages, reciveMessage]);
+    const { chat, content, timestamp } = reciveMessage;
     setChatList((prevChats) => {
-      return prevChats.map((chatItem) => {
+      const updatedChatList = prevChats.map((chatItem) => {
         if (chatItem.id === chat.id) {
           return {
             ...chatItem,
             lastMessageContent: content,
-            lastMessageTimestamp: timestamp,  
-            unreadCount: (chatItem.unreadCount || 0) + 1, 
+            lastMessageTimestamp: timestamp,
+            unreadCount: chatItem.id === currentChat?.id ? 0 : (chatItem.unreadCount || 0) + 1,
           };
         }
-        return chatItem;  
+        return chatItem;
+      }).sort((a, b) => {
+        if (b.unreadCount > a.unreadCount) return 1;
+        if (b.unreadCount < a.unreadCount) return -1;
+        return new Date(b.lastMessageTimestamp) - new Date(a.lastMessageTimestamp);
       });
+
+      return updatedChatList;
     });
+    setMessages((prevMessages) => {
+      const messageExists = prevMessages.some(msg => msg.id === reciveMessage.id);
+      if (!messageExists) {
+        return [reciveMessage, ...prevMessages];
+      }
+      return prevMessages;
+    });
+    scrollToBottom();
   };
   const onNotificationReceive = (payload) => {
     const notification = JSON.parse(payload.body);
@@ -273,29 +384,6 @@ export const HomePage = () => {
     dispatch(sendNotification(notification.title, notification.message));
   };
 
-  useEffect(() => {
-    if (isConnected && chat.chats.length > 0 && stompClient) {
-      chat.chats.forEach((chat) => {
-        stompClient.send("/app/updateUser", {}, JSON.stringify(chat));
-      });
-    }
-  }, [chat.chats, isConnected, stompClient]);
-
-  const onUserUpdateReceive = (payload) => {
-    const updatedChats = JSON.parse(payload.body);
-    setChatList((prevChats) => {
-      return prevChats.map((chatItem) => {
-        if (chatItem.id === updatedChats.id) {
-          return {
-            ...chatItem,
-            ...updatedChats,
-          };
-        }
-        return chatItem;
-      });
-    });
-  };
-  
   useEffect(() => {
     if (chat.chats.length > 0) {
       setChatList(chat.chats);
@@ -320,18 +408,29 @@ export const HomePage = () => {
     dispatch(getChats({ token }));
   }, [chat.createChat, chat.createGroup, dispatch, token]);
   useEffect(() => {
-    const pageSize = 7;
-    if (currentChat?.id) {
-      const totalMessages = messages.length;
-      const lastPage = Math.floor((totalMessages - 1) / pageSize);
 
-      if (totalMessages === 0) {
-        dispatch(getAllMessage({ chatId: currentChat.id, token }));
-      } else {
-        dispatch(getAllMessage({ chatId: currentChat.id, token, pageSize, pageNumber: lastPage }));
-      }
+    if (currentChat?.id) {
+      dispatch(getAllMessage({ chatId: currentChat.id, token, pageSize, pageNumber: 0 }));
+      setMessagePage(0);
+      setMessages([]);
     }
   }, [currentChat, message.newMessage, dispatch, token]);
+
+  const handleLoadMessage = async () => {
+    const nextPage = messagePage + 1;
+    setMessagePage(nextPage);
+    setLoadingMessages(true);
+    const newMessages = await dispatch(getAllMessage({
+      chatId: currentChat.id,
+      token: token,
+      pageSize: pageSize,
+      pageNumber: nextPage
+    }));
+    if (newMessages) {
+      setMessages(prevMessages => [...newMessages, ...prevMessages]);
+    }
+    setLoadingMessages(false);
+  };
 
   const imageUrl = auth.reqUser?.profile_picture
     ? `http://localhost:8080/uploads/profile/${auth.reqUser.profile_picture}`
@@ -344,6 +443,13 @@ export const HomePage = () => {
         <div className="w-1/3 bg-card dark:bg-gray-800 text-card-foreground dark:text-white h-full border-r border-border dark:border-gray-700">
           {isGroup && <CreateGroup setIsGroup={setIsGroup} />}
           {isProfile && <Profile handleNavigate={handleBack} />}
+          {userProfile && (<UserProfileCard handleNavigate={handlebackProfile} />)}
+          {userCardOpen && selectedUserCardId && (
+            <UserCard
+              userId={selectedUserCardId}
+              handleNavigate={() => setUserCardOpen(false)}
+            />
+          )}
           {!isProfile && !isGroup && (
             <div className="flex flex-col h-full">
               <div className="flex justify-between items-center p-4 border-b border-border dark:border-gray-700">
@@ -353,19 +459,30 @@ export const HomePage = () => {
                   <p className="font-semibold">{auth.reqUser?.full_name}</p>
                 </div>
                 <div className="flex space-x-4 text-2xl">
-                  <TbCircleDashed
+                  <MdDynamicFeed
                     className="cursor-pointer hover:text-primary dark:hover:text-teal-400 transition-colors"
                     onClick={() => navigate("/status")}
                   />
-                  <ImProfile
+                  <BsThreeDotsVertical
                     className="cursor-pointer hover:text-primary dark:hover:text-teal-400 transition-colors"
-                    onClick={handleNavigate}
-                  />
-                  <GrLogout
-                    className="cursor-pointer hover:text-primary dark:hover:text-teal-400 transition-colors"
-                    onClick={handleLogout}
+                    onClick={handleClick}
                   />
                 </div>
+                <Menu
+                  anchorEl={anchorEl}
+                  open={open}
+                  onClose={handleClose}
+                  MenuListProps={{ 'aria-labelledby': 'basic-button' }}
+                >
+                  <MenuItem onClick={handleNavigateProfile}>
+                    <ImProfile />
+                    Profile
+                  </MenuItem>
+                  <MenuItem onClick={handleLogout}>
+                    <GrLogout />
+                    Logout
+                  </MenuItem>
+                </Menu>
               </div>
               <div className="relative flex justify-center items-center bg-background dark:bg-gray-900 p-4">
                 <div className="relative flex items-center">
@@ -410,19 +527,22 @@ export const HomePage = () => {
                   const lastMessageTimestamp = item.lastMessageTimestamp
                     ? new Date(item.lastMessageTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                     : '';
+                  const truncatedContent = lastMessageContent.length > 15
+                    ? lastMessageContent.substring(0, 10) + '...'
+                    : lastMessageContent;
 
                   return (
                     <div key={item.id} onClick={() => handleCurrentChat(item)} className="chat-item">
                       <ChatCard
                         name={chatName}
                         userImg={chatImage}
-                        content={lastMessageContent}
+                        content={truncatedContent}
                         timestamp={lastMessageTimestamp}
-                        count={item.unreadCount || 0} 
+                        count={item.unreadCount || 0}
                       />
                     </div>
                   );
-                })} 
+                })}
               </div>
             </div>
           )}
@@ -454,12 +574,12 @@ export const HomePage = () => {
                   </div>
                   <div className='flex items-center space-x-4'>
                     <BsThreeDotsVertical
-                      onClick={handleClick}
+                      onClick={handleClickSecond}
                       className='text-2xl cursor-pointer hover:text-teal-200 transition-colors' />
                     <Menu
-                      anchorEl={anchorEl}
-                      open={open}
-                      onClose={handleClose}
+                      anchorEl={anchorElSecondMenu}
+                      open={openSecondMenu}
+                      onClose={handleCloseSecondMenu}
                       MenuListProps={{ 'aria-labelledby': 'basic-button' }}
                     >
                       {currentChat.group ? [
@@ -481,7 +601,7 @@ export const HomePage = () => {
                             Delete Chat
                           </MenuItem>
                         ),] : [
-                        <MenuItem key="profile">
+                        <MenuItem key="profile" onClick={() => handleOpenUserCard(getOtherUserId())}>
                           <ImProfile />
                           Profile
                         </MenuItem>,
@@ -490,6 +610,7 @@ export const HomePage = () => {
                           Delete Chat
                         </MenuItem>,
                       ]}
+
                     </Menu>
                     <AddMemberModal
                       openAddMemberModal={openAddMemberModal}
@@ -511,13 +632,22 @@ export const HomePage = () => {
                 </div>
               </div>
               <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-gray-100 dark:bg-gray-800" onScroll={handleMessageScroll}>
+                <div className="flex justify-center">
+                  <button onClick={handleLoadMessage} className="flex items-center justify-center w-[3.8vw] p-2 bg-gray-200 dark:bg-gray-700 rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+                    <BsArrowUp className="text-xl text-gray-700 dark:text-gray-300" />
+                  </button>
+                </div>
                 {messages && messages.length > 0 && [...messages].reverse().map((msg) => (
                   <div key={msg.id} className={`flex ${msg.user.id !== auth.reqUser.id ? 'justify-start' : 'justify-end'}`}>
                     <MessageCard
                       isReqUserMessage={msg.user.id !== auth.reqUser.id}
                       content={msg.content}
+                      imageUrl={msg.imageUrl}
                       userName={msg.user.full_name}
                       timestamp={msg.timestamp}
+                      onDelete={() => handleDeleteMessage(msg.id)}
+                      userId={msg.user.id}
+                      currentUserId={auth.reqUser.id}
                     />
                   </div>
                 ))}
@@ -525,7 +655,14 @@ export const HomePage = () => {
               </div>
               <div className="bg-white dark:bg-gray-800 p-4 shadow-inner">
                 <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-full shadow-sm">
-                  <BsEmojiSmile className="text-gray-500 dark:text-gray-400 mx-3 cursor-pointer hover:text-teal-500 dark:hover:text-teal-400 transition-colors" />
+                  <BsEmojiSmile
+                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                    className="text-gray-500 dark:text-gray-400 mx-3 cursor-pointer hover:text-teal-500 dark:hover:text-teal-400 transition-colors" />
+                  {showEmojiPicker && (
+                    <EmojiPicker onEmojiClick={handleEmojiClick}
+                      style={{ position: 'absolute', bottom: '60px', right: '20px', zIndex: 1000 }}
+                    />
+                  )}
                   <input
                     className="flex-1 py-2 px-4 bg-transparent focus:outline-none text-gray-700 dark:text-gray-200"
                     type="text"
@@ -538,7 +675,16 @@ export const HomePage = () => {
                       }
                     }}
                   />
-                  <ImAttachment className="text-gray-500 dark:text-gray-400 mx-3 cursor-pointer hover:text-teal-500 dark:hover:text-teal-400 transition-colors" />
+                  <label htmlFor="image-upload" className="mx-3 cursor-pointer hover:text-teal-500 dark:hover:text-teal-400 transition-colors">
+                    <ImAttachment className="text-gray-500 dark:text-gray-400" />
+                  </label>
+                  <input
+                    id="image-upload"
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={(e) => setImage(e.target.files[0])}
+                  />
                   <BsMicFill className="text-gray-500 dark:text-gray-400 mx-3 cursor-pointer hover:text-teal-500 dark:hover:text-teal-400 transition-colors" />
                 </div>
               </div>
@@ -546,7 +692,7 @@ export const HomePage = () => {
           )}
           {!currentChat && (
             <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
-              <img src="https://static6.depositphotos.com/1006463/608/i/450/depositphotos_6088794-stock-photo-3d-bubble-talk-on-white.jpg" alt="" className="w-64 h-64 mb-6" />
+              <img src="https://cdn.pixabay.com/photo/2012/04/15/21/17/speech-35342_640.png" alt="" className="w-64 h-64 mb-6" />
               <h1 className="text-4xl font-bold text-primary dark:text-teal-400 mb-4">Start Messaging</h1>
               <p className="text-muted-foreground dark:text-gray-400 max-w-md">
                 Send messages as fast as 3G network speed. Helps you send messages to friends and relatives with high security (don't mind admin).
@@ -576,23 +722,52 @@ export const HomePage = () => {
           .modal.open {
             display: block; 
           }
+          .chat-item .content {
+            white-space: nowrap;        
+            overflow: hidden;         
+            text-overflow: ellipsis;   
+            max-width: 200px;          
+          }
+          .message-card {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+          }
+          .message-content {
+            flex: 1;
+          }
+          .message-actions {
+            margin-left: 10px;
+           cursor: pointer;
+          }
+          .message-timestamp {
+            font-size: 0.8em;
+            color: gray;
+          }
+          .req-user-message .message-content {
+            text-align: right;
+          }
         `}
       </style>
       <Snackbar
         open={snackbarOpen}
         autoHideDuration={6000}
         onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
       >
         <SnackbarContent
           sx={{
-            backgroundColor: 'success.main', // Hoặc 'error.main' tùy theo loại thông báo
+            backgroundColor: 'success.main',
             color: 'white',
             display: 'flex',
             justifyContent: 'space-between',
+            padding: '10px 20px',
+            borderRadius: '8px',
           }}
           message={
             <span style={{ display: 'flex', alignItems: 'center' }}>
-              <BsEmojiSmile style={{ marginRight: 8 }} /> {/* Thêm biểu tượng */}
+              <BsEmojiSmile style={{ marginRight: 8 }} />
               {snackbarMessage}
             </span>
           }

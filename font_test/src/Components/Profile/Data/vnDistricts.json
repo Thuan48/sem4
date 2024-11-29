@@ -1,0 +1,152 @@
+[
+  {
+    "code": "HN-BD",
+    "name": "Quận Ba Đình",
+    "province": "Hà Nội"
+  },
+  {
+    "code": "HN-BTL",
+    "name": "Quận Bắc Từ Liêm",
+    "province": "Hà Nội"
+  },
+  {
+    "code": "HN-CCH",
+    "name": "Quận Cầu Giấy",
+    "province": "Hà Nội"
+  },
+  {
+    "code": "HN-DHN",
+    "name": "Quận Đống Đa",
+    "province": "Hà Nội"
+  },
+  {
+    "code": "HN-HNH",
+    "name": "Quận Hoàn Kiếm",
+    "province": "Hà Nội"
+  },
+  {
+    "code": "HN-HOA",
+    "name": "Quận Hoàng Mai",
+    "province": "Hà Nội"
+  },
+  {
+    "code": "HN-LAH",
+    "name": "Quận Long Biên",
+    "province": "Hà Nội"
+  },
+  {
+    "code": "HCM-Q1",
+    "name": "Q1",
+    "province": "Hồ Chí Minh"
+  },
+  {
+    "code": "HCM-Q2",
+    "name": "Q2",
+    "province": "Hồ Chí Minh"
+  },
+  {
+    "code": "HCM-Q3",
+    "name": "Q3",
+    "province": "Hồ Chí Minh"
+  },
+  {
+    "code": "HCM-Q4",
+    "name": "Q4",
+    "province": "Hồ Chí Minh"
+  },
+  {
+    "code": "HCM-Q5",
+    "name": "Q5",
+    "province": "Hồ Chí Minh"
+  },
+  {
+    "code": "HCM-Q6",
+    "name": "Q6",
+    "province": "Hồ Chí Minh"
+  },
+  {
+    "code": "HCM-Q7",
+    "name": "Q7",
+    "province": "Hồ Chí Minh"
+  },
+  {
+    "code": "HCM-Q8",
+    "name": "Q8",
+    "province": "Hồ Chí Minh"
+  },
+  {
+    "code": "HCM-Q9",
+    "name": "Q9",
+    "province": "Hồ Chí Minh"
+  },
+  {
+    "code": "HCM-Q10",
+    "name": "Q10",
+    "province": "Hồ Chí Minh"
+  },
+  {
+    "code": "HCM-Q11",
+    "name": "Q11",
+    "province": "Hồ Chí Minh"
+  },
+  {
+    "code": "HCM-QTB",
+    "name": "Quận Tân Bình",
+    "province": "Hồ Chí Minh"
+  },
+  {
+    "code": "HCM-TBN",
+    "name": "Quận Tân Phú",
+    "province": "Hồ Chí Minh"
+  },
+  {
+    "code": "HCM-BTN",
+    "name": "Quận Bình Tân",
+    "province": "Hồ Chí Minh"
+  },
+  {
+    "code": "DN-CT",
+    "name": "Quận Cẩm Lệ",
+    "province": "Đà Nẵng"
+  },
+  {
+    "code": "DN-QS",
+    "name": "Quận Sơn Trà",
+    "province": "Đà Nẵng"
+  },
+  {
+    "code": "DN-HV",
+    "name": "Huyện Hòa Vang",
+    "province": "Đà Nẵng"
+  },
+  {
+    "code": "CT-NNG",
+    "name": "Quận Ninh Kiều",
+    "province": "Cần Thơ"
+  },
+  {
+    "code": "CT-BP",
+    "name": "Bình Phước",
+    "province": "Cần Thơ"
+  },
+  {
+    "code": "HP-TPH",
+    "name": "Quận Hải An",
+    "province": "Hải Phòng"
+  },
+  {
+    "code": "HP-LHT",
+    "name": "Quận Lê Chân",
+    "province": "Hải Phòng"
+  },
+  {
+    "code": "BG-DNG",
+    "name": "Đồng Nai",
+    "province": "Đồng Nai"
+  },
+  {
+    "code": "BG-HPQ",
+    "name": "Huyện Phú Quốc",
+    "province": "Bà Rịa - Vũng Tàu"
+  }
+]

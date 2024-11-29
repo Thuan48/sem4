@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,6 +23,7 @@ import sem4.proj4.repository.ChatRepository;
 import sem4.proj4.repository.MessageRepository;
 import sem4.proj4.request.ChatDto;
 import sem4.proj4.request.GroupChatRequest;
+import sem4.proj4.request.UserDto;
 
 @Service
 public class ChatServiceImplement implements ChatService {
@@ -175,36 +177,53 @@ public class ChatServiceImplement implements ChatService {
   }
 
   @Override
-  public List<ChatDto> getChatsWithLastMessage(Integer userId) throws ChatException,UserException {
-    List<Chat> chats = chatRepository.findAll();
-        List<ChatDto> chatDtos = new ArrayList<>();
-        //User user = userService.findUserById(userId);
-        
-        for (Chat chat : chats) {
-            Message lastMessage = messageRepository.findTopByChatOrderByTimestampDesc(chat);
-            ChatDto chatDto = new ChatDto();
-            chatDto.setId(chat.getId());
-            chatDto.setChatName(chat.getChat_name());
-            chatDto.setChatImage(chat.getChat_image());
-            chatDto.setGroup(chat.isGroup());
-            chatDto.setLastMessageContent(lastMessage != null ? lastMessage.getContent() : null);
-            chatDto.setLastMessageTimestamp(lastMessage != null ? lastMessage.getTimestamp() : null);
-            if (!chat.isGroup()) {
-              // Lấy danh sách người dùng trong chat
-              Set<User> userSet = chat.getUsers();
-              List<User> userList = new ArrayList<>(userSet);// giả sử có phương thức getUsers() trong Chat
-              // Lấy thông tin người dùng để đặt tên và ảnh
-              for (User users : userList) {
-                if (!users.getId().equals(userId)) { // Nếu người dùng không phải là người gọi
-                  chatDto.setUserName(users.getFull_name()); // Giả sử có phương thức getFullName()
-                  chatDto.setUserImage(users.getProfile_picture()); // Giả sử có phương thức getProfilePicture()
-                  break; // Chỉ lấy người đầu tiên không phải người gọi
-                }
-              }
-            }
-            chatDtos.add(chatDto);
+  public List<ChatDto> getChatsWithLastMessage(Integer userId) throws ChatException, UserException {
+    List<Chat> chats = chatRepository.findChatByUserid(userId);
+    List<ChatDto> chatDtos = new ArrayList<>();
+    for (Chat chat : chats) {
+      Message lastMessage = messageRepository.findTopByChatOrderByTimestampDesc(chat);
+      ChatDto chatDto = new ChatDto();
+      chatDto.setId(chat.getId());
+      chatDto.setChatName(chat.getChat_name());
+      chatDto.setChatImage(chat.getChat_image());
+      chatDto.setGroup(chat.isGroup());
+      chatDto.setLastMessageContent(lastMessage != null ? lastMessage.getContent() : null);
+      chatDto.setLastMessageTimestamp(lastMessage != null ? lastMessage.getTimestamp() : null);
+      
+      List<UserDto> userDtos = chat.getUsers().stream()
+            .map(user -> new UserDto(user.getId(), user.getFull_name(), user.getProfile_picture()))
+            .collect(Collectors.toList());
+        chatDto.setUsers(userDtos);
+      
+      if (chat.isGroup()) {
+        List<Integer> adminIds = chat.getAdmin().stream()
+            .map(User::getId)
+            .collect(Collectors.toList());
+        chatDto.setUserAdminIds(adminIds);
+      } else {
+        Set<User> userSet = chat.getUsers();
+        List<User> userList = new ArrayList<>(userSet);
+        for (User user : userList) {
+          if (!user.getId().equals(userId)) {
+            chatDto.setUserName(user.getFull_name());
+            chatDto.setUserImage(user.getProfile_picture());
+            chatDto.setUserId(user.getId());
+            break;
+          }
         }
-        return chatDtos;
+        chatDto.setUserAdminIds(null);
+      }
+      chatDtos.add(chatDto);
+    }
+    return chatDtos;
   }
-  
+
+  @Override
+  public List<User> getChatMembers(Integer chatId, User reqUser) throws ChatException {
+    Chat chat = findChatById(chatId);
+    if (!chat.getUsers().contains(reqUser)) {
+      throw new ChatException("User is not a member of this chat");
+    }
+    return new ArrayList<>(chat.getUsers());
+  }
 }

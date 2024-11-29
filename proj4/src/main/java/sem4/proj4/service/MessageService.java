@@ -18,6 +18,6 @@ public interface MessageService {
 
   public Message findMessageById(Integer messageId) throws MessageException;
 
-  public void deleteMessage(Integer messageId, User reqUser) throws MessageException, UserException;
+  public Message deleteMessage(Integer messageId, User reqUser) throws MessageException, UserException;
 
 }

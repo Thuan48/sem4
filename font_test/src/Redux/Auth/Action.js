@@ -1,5 +1,5 @@
 import { BASE_API_URL } from "../../config/api"
-import { LOGIN, LOGOUT, REGISTER, REQ_USER, SEARCH_USER, UPDATE_USER } from "./ActionType";
+import { CONFIRM_EMAIL, GET_USER_PROFILE, LOGIN, LOGOUT, REGISTER, REQ_USER, SEARCH_USER, UPDATE_USER, UPDATE_USER_PROFILE } from "./ActionType";
 
 export const register = (data) => async (dispatch) => {
   try {
@@ -89,7 +89,59 @@ export const updateUser = (formData, token) => async (dispatch) => {
     console.log("catch error:", error);
   }
 };
+export const updateProfile = (formData, token) => async (dispatch) => {
+  try {
+    const res = await fetch(`${BASE_API_URL}/api/users/updateProfile`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+      body: formData,
+    });
 
+    const resData = await res.json();
+    dispatch({ type: UPDATE_USER_PROFILE, payload: resData });
+  } catch (error) {
+    console.log("catch error:", error);
+  }
+};
+
+export const getUserProfile = (data) => async (dispatch) => {
+  try {
+    const res = await fetch(`${BASE_API_URL}/api/users/profileUser/${data.id}`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${data.token}`
+      },
+
+    })
+    const resData = await res.json();
+    dispatch({ type: GET_USER_PROFILE, payload: resData });
+  } catch (error) {
+    console.log("catch error:", error);
+  }
+}
+
+export const confirmEmail = (email) => async (dispatch) => {
+  try {
+    const res = await fetch(`${BASE_API_URL}/auth/confirm?email=${email}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.message || "Email confirmation failed.");
+    }
+
+    const resData = await res.json();
+    dispatch({ type: CONFIRM_EMAIL, payload: resData });
+  } catch (error) {
+    console.log("catch error:", error);
+  }
+};
 
 export const logout = () => async (dispatch) => {
   localStorage.removeItem("token");

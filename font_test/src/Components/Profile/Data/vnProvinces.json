@@ -1,0 +1,22 @@
+[
+  {
+    "code": "HN",
+    "name": "Hà Nội"
+  },
+  {
+    "code": "HCM",
+    "name": "Hồ Chí Minh"
+  },
+  {
+    "code": "DN",
+    "name": "Đà Nẵng"
+  },
+  {
+    "code": "CT",
+    "name": "Cần Thơ"
+  },
+  {
+    "code": "HP",
+    "name": "Hải Phòng"
+  }
+]

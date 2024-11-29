@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Button, Snackbar, Alert } from '@mui/material';
-import { green } from '@mui/material/colors';
+import { green, red } from '@mui/material/colors';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { currenUser, register } from '../../Redux/Auth/Action';
@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 const Signup = () => {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const [inputData, setInputData] = useState({ email: "", full_name: "", password: "", confirmPassword: "" });
   const dispatch = useDispatch();
   const { auth } = useSelector(store => store);
@@ -21,10 +22,9 @@ const Signup = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (inputData.password !== inputData.confirmPassword) {
-      alert("Passwords do not match!");
+      setErrorMessage("Passwords do not match!");
       return;
     }
-    console.log('Form submitted:', inputData);
     dispatch(register({ email: inputData.email, full_name: inputData.full_name, password: inputData.password }));
     setOpen(true);
   };
@@ -89,6 +89,25 @@ const Signup = () => {
                 </motion.div>
               ))}
             </AnimatePresence>
+
+            {errorMessage && (
+              <Alert
+                onClose={() => setErrorMessage('')}
+                severity="error"
+                sx={{
+                  mt: 2,
+                  bgcolor: 'rgba(255, 255, 255, 0.9)',
+                  color: red[800],
+                  fontSize: '1rem',
+                  '& .MuiAlert-icon': {
+                    fontSize: '2rem'
+                  }
+                }}
+              >
+                {errorMessage}
+              </Alert>
+            )}
+
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -130,6 +149,7 @@ const Signup = () => {
           </motion.div>
         </div>
       </motion.div>
+
       <Snackbar
         open={open}
         autoHideDuration={6000}

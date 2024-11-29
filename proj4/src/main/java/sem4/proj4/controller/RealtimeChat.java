@@ -1,6 +1,7 @@
 package sem4.proj4.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import java.util.List;
+
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.handler.annotation.SendTo;
@@ -12,14 +13,11 @@ import sem4.proj4.entity.Chat;
 import sem4.proj4.entity.Message;
 import sem4.proj4.entity.Notification;
 import sem4.proj4.entity.User;
-import sem4.proj4.service.UserService;
 
 @Controller
 public class RealtimeChat {
 
   private final SimpMessagingTemplate simpMessagingTemplate;
-  @Autowired
-  private UserService userService;
 
   public RealtimeChat(SimpMessagingTemplate simpMessagingTemplate) {
     this.simpMessagingTemplate = simpMessagingTemplate;
@@ -32,22 +30,14 @@ public class RealtimeChat {
     return message;
   }
 
-  @MessageMapping("/updateUser")
-  public void updateUser(@Payload User user, SimpMessageHeaderAccessor headerAccessor) {
-    User updatedUser = userService.save(user);
-    simpMessagingTemplate.convertAndSend("/profile/" + updatedUser.getId().toString(), updatedUser);
-  }
-
-  @MessageMapping("/updateChat")
-  public Chat reciveChat(@Payload Chat chat) {
-    simpMessagingTemplate.convertAndSend("/chatUser/" + chat.getId().toString(), chat);
-    return chat;
-  }
-
   @MessageMapping("/addUser")
   public void addUserToGroup(@Payload User user, SimpMessageHeaderAccessor headerAccessor) {
     simpMessagingTemplate.convertAndSend("/topic/notifications",
         new Notification("User Added", "User " + user.getFull_name() + " has been added to the group."));
   }
 
+  @MessageMapping("/chatList")
+  public void handleChatList(@Payload List<Chat> chatList) {
+    simpMessagingTemplate.convertAndSend("/chatList", chatList);
+  }
 }

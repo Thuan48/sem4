@@ -1,5 +1,9 @@
 package sem4.proj4.entity;
 
+import java.time.LocalDate;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -14,7 +18,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name="user")
+@Table(name = "user")
 public class User {
   @Id
   @Column
@@ -26,6 +30,17 @@ public class User {
   private String email;
   @Column
   private String profile_picture;
+  @Column
+  private String address;
+  @Column
+  private String gender;
+  @Column
+  private String phone;
+  @Column
+  @JsonFormat(pattern = "yyyy-MM-dd")
+  private LocalDate dob;
+  @Column
+  private String bio;
   @Column
   private String password;
   @Column

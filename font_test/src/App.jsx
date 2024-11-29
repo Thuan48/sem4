@@ -6,6 +6,7 @@ import Status from './Components/Status/Status';
 import StatusView from './Components/Status/StatusView';
 import Signin from './Components/Register/Signin';
 import Signup from './Components/Register/Signup';
+import ConfirmEmail from './Components/Register/ConfirmEmail';
 
 function App() {
   const [count, setCount] = useState(0);
@@ -19,6 +20,7 @@ function App() {
           <Route path="/status/:userId" element={<StatusView />} />
           <Route path="/signin" element={<Signin />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/auth/confirm" element={<ConfirmEmail />} />
         </Routes>
       </div>
     </>

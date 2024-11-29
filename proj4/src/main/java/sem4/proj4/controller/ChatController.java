@@ -125,4 +125,13 @@ public class ChatController {
     return chatService.getChatsWithLastMessage(reqUser.getId());
   }
 
+  @GetMapping("/{chatId}/members")
+  public ResponseEntity<List<User>> getChatMembers(@PathVariable Integer chatId,
+      @RequestHeader("Authorization") String jwt) throws ChatException, UserException {
+
+    User reqUser = userService.findUserProfile(jwt);
+    List<User> members = chatService.getChatMembers(chatId, reqUser);
+
+    return new ResponseEntity<>(members, HttpStatus.OK);
+  }
 }

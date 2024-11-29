@@ -1,32 +1,37 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { currenUser, login } from '../../Redux/Auth/Action';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Alert, Button, Snackbar } from '@mui/material';
-import { green } from '@mui/material/colors';
+import { Alert, Button } from '@mui/material';
+import { green, red } from '@mui/material/colors';
 
 const Signin = () => {
   const navigate = useNavigate();
   const [inputData, setInputData] = useState({ email: "", password: "" });
   const [open, setOpen] = useState(false);
-  const { auth } = useSelector(store => store)
+  const [notificationType, setNotificationType] = useState('success');
+  const { auth } = useSelector(store => store);
   const dispatch = useDispatch();
   const token = localStorage.getItem("token");
+  const [successMessage, setSuccessMessage] = useState('');
 
-  const snackBar = () => {
-    setOpen(false);
-  }
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Form submitted:', inputData);
-    setOpen(true);
-    dispatch(login(inputData)).then(() => {
-      if (auth.reqUser) {
+    try {
+      const response = await dispatch(login(inputData));
+      if (response && response.jwt) {
+        setNotificationType('success');
+        setOpen(true);
         navigate("/");
+      } else {
+        setNotificationType('error');
+        setOpen(true);
       }
-    });
+    } catch (error) {
+      setNotificationType('error');
+      setOpen(true);
+    }
   };
 
   const handleChange = (e) => {
@@ -35,19 +40,35 @@ const Signin = () => {
   };
 
   useEffect(() => {
-    if (token) dispatch(currenUser(token))
-  }, [token, dispatch])
+    if (token) dispatch(currenUser(token));
+  }, [token, dispatch]);
+
+  useEffect(() => {
+    if (location.state && location.state.message) {
+      setSuccessMessage(location.state.message);
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location, navigate]);
 
   useEffect(() => {
     if (auth.reqUser?.full_name) {
-      navigate('/')
+      navigate('/');
     }
-  }, [auth.reqUser, navigate])
+  }, [auth.reqUser, navigate]);
 
   return (
     <div className="min-h-screen flex justify-center items-center bg-gradient-to-br from-purple-600 via-pink-500 to-red-500 p-4"
-     style={{ background: `url('https://img3.thuthuatphanmem.vn/uploads/2019/10/10/background-anh-dong_032845920.gif') no-repeat center center fixed`, backgroundSize: 'cover' }}>
-      
+      style={{ background: `url('https://img3.thuthuatphanmem.vn/uploads/2019/10/10/background-anh-dong_032845920.gif') no-repeat center center fixed`, backgroundSize: 'cover' }}>
+      {successMessage && (
+        <div className="mb-4 p-4 text-green-700 bg-green-100 rounded">
+          {successMessage}
+        </div>
+      )}
+      {auth.signin && auth.signin.success === false && (
+        <div className="mb-4 p-4 text-red-700 bg-red-100 rounded">
+          {auth.signin.message || 'Login failed.'}
+        </div>
+      )}
       <div className="absolute inset-0 bg-black opacity-50"></div>
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
@@ -111,6 +132,25 @@ const Signin = () => {
                 Sign In
               </Button>
             </motion.div>
+
+            {open && (
+              <Alert
+                onClose={() => setOpen(false)}
+                severity={notificationType}
+                sx={{
+                  mt: 2,
+                  width: "100%",
+                  bgcolor: notificationType === 'success' ? 'rgba(255, 255, 255, 0.9)' : 'rgba(255, 0, 0, 0.9)',
+                  color: notificationType === 'success' ? green[800] : red[200],
+                  fontSize: '1rem',
+                  '& .MuiAlert-icon': {
+                    fontSize: '2rem'
+                  }
+                }}
+              >
+                {notificationType === 'success' ? 'Sign In Successful!' : 'Sign In Failed! Incorrect email or password.'}
+              </Alert>
+            )}
           </form>
           <motion.div
             className='flex space-x-3 items-center mt-8 justify-center'
@@ -129,29 +169,8 @@ const Signin = () => {
           </motion.div>
         </div>
       </motion.div>
-      <Snackbar
-        open={open}
-        autoHideDuration={6000}
-        onClose={snackBar}
-      >
-        <Alert
-          onClose={snackBar}
-          severity="success"
-          sx={{
-            width: "100%",
-            bgcolor: 'rgba(255, 255, 255, 0.9)',
-            color: green[800],
-            fontSize: '1rem',
-            '& .MuiAlert-icon': {
-              fontSize: '2rem'
-            }
-          }}
-        >
-          Sign In Successful!
-        </Alert>
-      </Snackbar>
     </div>
-  )
-}
+  );
+};
 
-export default Signin
+export default Signin;

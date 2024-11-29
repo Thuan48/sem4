@@ -28,4 +28,6 @@ public interface ChatService {
   public void deleteChat(Integer chatId, Integer userId) throws ChatException;
   
   public List<ChatDto> getChatsWithLastMessage(Integer userId) throws ChatException,UserException;
+
+public List<User> getChatMembers(Integer chatId, User reqUser) throws ChatException;
 }

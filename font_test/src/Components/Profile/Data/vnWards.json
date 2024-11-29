@@ -1,0 +1,117 @@
+[
+  {
+    "code": "HN-BD-1",
+    "name": "Phường Phúc Xá",
+    "district": "Quận Ba Đình"
+  },
+  {
+    "code": "HN-BD-2",
+    "name": "Phường Trúc Bạch",
+    "district": "Quận Ba Đình"
+  },
+  {
+    "code": "HN-BD-3",
+    "name": "Phường Vĩnh Phúc",
+    "district": "Quận Ba Đình"
+  },
+  {
+    "code": "HN-BTL-1",
+    "name": "Phường Nhật Tân",
+    "district": "Quận Bắc Từ Liêm"
+  },
+  {
+    "code": "HN-BTL-2",
+    "name": "Phường Phú Diễn",
+    "district": "Quận Bắc Từ Liêm"
+  },
+  {
+    "code": "HN-CCH-1",
+    "name": "Phường Cầu Giấy",
+    "district": "Quận Cầu Giấy"
+  },
+  {
+    "code": "HN-CCH-2",
+    "name": "Phường Dịch Vọng",
+    "district": "Quận Cầu Giấy"
+  },
+  {
+    "code": "HN-DHN-1",
+    "name": "Phường Đống Đa",
+    "district": "Quận Đống Đa"
+  },
+  {
+    "code": "HN-DHN-2",
+    "name": "Phường Trung Hoà",
+    "district": "Quận Đống Đa"
+  },
+  {
+    "code": "HCM-Q1-1",
+    "name": "Phường Bến Nghé",
+    "district": "Q1"
+  },
+  {
+    "code": "HCM-Q1-2",
+    "name": "Phường Bến Thành",
+    "district": "Q1"
+  },
+  {
+    "code": "HCM-Q2-1",
+    "name": "Phường Thảo Điền",
+    "district": "Q2"
+  },
+  {
+    "code": "HCM-Q2-2",
+    "name": "Phường An Phú",
+    "district": "Q2"
+  },
+  {
+    "code": "DN-SON-1",
+    "name": "Phường Mỹ An",
+    "district": "Quận Sơn Trà"
+  },
+  {
+    "code": "DN-SON-2",
+    "name": "Phường Hoà Hải",
+    "district": "Quận Sơn Trà"
+  },
+  {
+    "code": "CT-NNG-1",
+    "name": "Phường Ninh Kiều",
+    "district": "Quận Ninh Kiều"
+  },
+  {
+    "code": "CT-NNG-2",
+    "name": "Phường Thủy Nguyên",
+    "district": "Quận Ninh Kiều"
+  },
+  {
+    "code": "HP-TPH-1",
+    "name": "Phường Hải An",
+    "district": "Quận Hải An"
+  },
+  {
+    "code": "HP-TPH-2",
+    "name": "Phường Lê Chân",
+    "district": "Quận Lê Chân"
+  },
+  {
+    "code": "BG-DNG-1",
+    "name": "Phường Xuân Khánh",
+    "district": "Thành phố Đồng Nai"
+  },
+  {
+    "code": "BG-DNG-2",
+    "name": "Phường Tân Tạo",
+    "district": "Thành phố Đồng Nai"
+  },
+  {
+    "code": "BG-HPQ-1",
+    "name": "Phường Phú Quốc",
+    "district": "Huyện Phú Quốc"
+  },
+  {
+    "code": "BG-HPQ-2",
+    "name": "Phường Cửa Cạn",
+    "district": "Huyện Phú Quốc"
+  }
+]

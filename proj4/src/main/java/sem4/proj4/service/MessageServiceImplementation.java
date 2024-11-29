@@ -2,9 +2,18 @@ package sem4.proj4.service;
 
 import java.util.List;
 import java.util.Optional;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import sem4.proj4.entity.Chat;
@@ -25,6 +34,8 @@ public class MessageServiceImplementation implements MessageService {
   UserService userService;
   @Autowired
   ChatService chatService;
+  @Value("${config-upload-dir}")
+  private String uploadDir;
 
   @Override
   public Message sendMessage(SendMessageRequest req) throws UserException, ChatException {
@@ -36,6 +47,23 @@ public class MessageServiceImplementation implements MessageService {
     message.setUser(user);
     message.setContent(req.getContent());
     message.setTimestamp(LocalDateTime.now());
+    if (req.getImage() != null && !req.getImage().isEmpty()) {
+      try {
+        Path path = Paths.get(uploadDir + "/messages");
+        if (!Files.exists(path)) {
+          Files.createDirectories(path);
+        }
+        String filename = req.getImage().getOriginalFilename();
+        Path filePath = path.resolve(filename);
+
+        Files.copy(req.getImage().getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
+        message.setImageUrl(filename);
+      } catch (Exception e) {
+        e.printStackTrace();
+        throw new ChatException("Error while uploading message image: " + e.getMessage());
+      }
+    }
 
     messageRepository.save(message);
 
@@ -50,22 +78,10 @@ public class MessageServiceImplementation implements MessageService {
     if (!chat.getUsers().contains(reqUser)) {
       throw new UserException("you not related chat" + chat.getId());
     }
+    Pageable pageable = PageRequest.of(pageNumber, pageSize, Sort.by("timestamp").descending());
+    Page<Message> messagePage = messageRepository.findByChatId(chat.getId(), pageable);
 
-    List<Message> messages = messageRepository.findByChatId(chat.getId());
-
-    int totalMessages = messages.size();
-    int totalPages = (int) Math.ceil((double) totalMessages / pageSize);
-    if (pageNumber >= totalPages && totalPages > 0) {
-      pageNumber = totalPages - 1;
-    }
-    int start = pageNumber * pageSize;
-    int end = Math.min(start + pageSize, messages.size());
-
-    if (start >= messages.size()) {
-      return List.of(); 
-    }
-
-    return messages.subList(start, end);
+    return messagePage.getContent();
   }
 
   @Override
@@ -78,12 +94,14 @@ public class MessageServiceImplementation implements MessageService {
   }
 
   @Override
-  public void deleteMessage(Integer messageId, User reqUser) throws MessageException, UserException {
+  public Message deleteMessage(Integer messageId, User reqUser) throws MessageException, UserException {
     Message message = findMessageById(messageId);
     if (message.getUser().getId().equals(reqUser.getId())) {
       messageRepository.deleteById(messageId);
-      }
-      throw new UserException("you can delete another message" + reqUser.getFull_name());
+      return message;
+    } else {
+      throw new UserException("You cannot delete another user's message");
+    }
   }
-
+  
 }

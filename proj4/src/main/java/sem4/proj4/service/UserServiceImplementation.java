@@ -9,6 +9,7 @@ import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.stereotype.Service;
 
@@ -16,7 +17,9 @@ import sem4.proj4.config.TokenProvider;
 import sem4.proj4.entity.User;
 import sem4.proj4.exception.UserException;
 import sem4.proj4.repository.UserRepository;
+import sem4.proj4.request.UpdateProfileRequest;
 import sem4.proj4.request.UpdateUserRequest;
+import sem4.proj4.request.UserDto;
 
 @Service
 public class UserServiceImplementation implements UserService {
@@ -25,6 +28,9 @@ public class UserServiceImplementation implements UserService {
   private UserRepository userRepo;
   @Autowired
   private TokenProvider token;
+
+  @Autowired
+    private SimpMessagingTemplate messagingTemplate;
 
   @Value("${config-upload-dir}")
   private String uploadDir;
@@ -79,7 +85,13 @@ public class UserServiceImplementation implements UserService {
       }
     }
 
-    return userRepo.save(user);
+    User updatedUser = userRepo.save(user);
+
+    UserDto userDto = new UserDto(updatedUser.getId(), updatedUser.getFull_name(), updatedUser.getProfile_picture());
+
+    messagingTemplate.convertAndSend("/topic/userUpdates", userDto);
+
+    return updatedUser;
   }
 
   @Override
@@ -96,6 +108,40 @@ public class UserServiceImplementation implements UserService {
   @Override
   public List<User> findAll() {
     return userRepo.findAll();
+  }
+
+  @Override
+  public User updateProfile(Integer userId, UpdateProfileRequest req) throws UserException {
+    User user = findUserById(userId);
+
+    if (req.getBio() != null) {
+      user.setBio(req.getBio());
+    }
+
+    if (req.getAddress() != null) {
+      user.setAddress(req.getAddress());
+    }
+
+    if (req.getGender() != null) {
+      user.setGender(req.getGender());
+    }
+
+    if (req.getPhone() != null) {
+      user.setPhone(req.getPhone());
+    }
+
+    if(req.getDob() != null) {
+      user.setDob(req.getDob());
+    }
+
+     User updatedUser = userRepo.save(user);
+
+    UserDto userDto = new UserDto(updatedUser.getId(), updatedUser.getFull_name(), updatedUser.getProfile_picture());
+
+    messagingTemplate.convertAndSend("/topic/userUpdates", userDto);
+
+    return updatedUser;
+    
   }
 
 }

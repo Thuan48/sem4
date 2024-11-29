@@ -4,6 +4,7 @@ import java.util.List;
 
 import sem4.proj4.entity.User;
 import sem4.proj4.exception.UserException;
+import sem4.proj4.request.UpdateProfileRequest;
 import sem4.proj4.request.UpdateUserRequest;
 
 public interface UserService {
@@ -19,4 +20,6 @@ public interface UserService {
   public User save(User user);
 
   public List<User> findAll();
+
+  public User updateProfile(Integer userId, UpdateProfileRequest req) throws UserException;
 }

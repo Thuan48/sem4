@@ -9,9 +9,11 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import sem4.proj4.config.TokenProvider;
@@ -48,6 +50,7 @@ public class AuthController {
     if (isUser != null) {
       throw new UserException("Email is user with another account" + email);
     }
+
     User create = new User();
     create.setEmail(email);
     create.setFull_name(fullname);
@@ -56,38 +59,46 @@ public class AuthController {
 
     userRepositoty.save(create);
 
+    String confirmationLink = "http://localhost:5173/auth/confirm?email=" + email;
+
     String subject = "Email Confirmation";
-    String body = "Hello " + fullname + ",\n\n" +
-        "Thank you for signing up! Please confirm your email by clicking the link :\n" +
-        "Best regards,\nYour Team";
+    String body = "<p>Hello " + fullname + ",</p>" +
+        "<p>Thank you for signing up! Please confirm your email by clicking the link below:</p>" +
+        "<p><a href=\"" + confirmationLink + "\" style=\"display: inline-block; padding: 10px 20px; " +
+        "color: #fff; background-color: #007BFF; text-decoration: none; border-radius: 5px;\">Confirm Email</a></p>";
+
     try {
       emailService.sendConfirmationEmail(email, subject, body);
     } catch (Exception e) {
       throw new UserException("Failed to send confirmation email: " + e.getMessage());
     }
 
-    Authentication authentication = new UsernamePasswordAuthenticationToken(email, password);
-    SecurityContextHolder.getContext().setAuthentication(authentication);
+    // Authentication authentication = new
+    // UsernamePasswordAuthenticationToken(email, password);
+    // SecurityContextHolder.getContext().setAuthentication(authentication);
 
-    String jwt = token.generateToken(authentication);
-    AuthResponse res = new AuthResponse(jwt, true);
+    // String jwt = token.generateToken(authentication);
+    AuthResponse res = new AuthResponse("Registration successful. Please check your email to confirm.", true);
 
-    return new ResponseEntity<AuthResponse>(res, HttpStatus.ACCEPTED);
+    return new ResponseEntity<AuthResponse>(res, HttpStatus.CREATED);
   }
 
-  // @PostMapping("/confirm")
-  // public ResponseEntity<String> confirmUser(@RequestParam String email,
-  // @RequestParam String code) {
-  // User user = userRepositoty.findByEmail(email);
-  // if (user != null && user.getConfirmationCode().equals(code)) {
-  // user.setEmailConfirmed(true); // Đánh dấu là đã xác nhận
-  // userRepositoty.save(user); // Lưu thay đổi
-  // return ResponseEntity.ok("User confirmed successfully.");
-  // } else {
-  // return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid
-  // confirmation code.");
-  // }
-  // }
+  @GetMapping("/confirm")
+  public ResponseEntity<AuthResponse> confirmUser(@RequestParam String email) {
+    User user = userRepositoty.findByEmail(email);
+    if (user == null) {
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new AuthResponse("Invalid email.", false));
+    }
+
+    if (user.isEmailConfirmed()) {
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new AuthResponse("Email already confirmed.", false));
+    }
+
+    user.setEmailConfirmed(true);
+    userRepositoty.save(user);
+
+    return ResponseEntity.ok(new AuthResponse("Email confirmed successfully.", true));
+  }
 
   @PostMapping("/signin")
   public ResponseEntity<AuthResponse> Login(@RequestBody LoginRequest req) {
@@ -95,21 +106,18 @@ public class AuthController {
     String email = req.getEmail();
     String password = req.getPassword();
 
-    // User user = userRepositoty.findByEmail(email);
-    // if (user == null) {
-    // return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new
-    // AuthResponse("Invalid credentials.", false));
-    // }
+    User user = userRepositoty.findByEmail(email);
+    if (user == null) {
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new AuthResponse("Invalid credentials.", false));
+    }
 
-    // if (!passwordEncoder.matches(password, user.getPassword())) {
-    // return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new
-    // AuthResponse("Invalid credentials.", false));
-    // }
+    if (!passwordEncoder.matches(password, user.getPassword())) {
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new AuthResponse("Invalid credentials.", false));
+    }
 
-    // if (!user.isEmailConfirmed()) {
-    // return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new
-    // AuthResponse("Account not confirmed.", false));
-    // }
+    if (!user.isEmailConfirmed()) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new AuthResponse("Account not confirmed.", false));
+    }
 
     Authentication authentication = authentication(email, password);
     SecurityContextHolder.getContext().setAuthentication(authentication);

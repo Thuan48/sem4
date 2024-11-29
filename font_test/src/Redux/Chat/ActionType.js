@@ -5,3 +5,4 @@ export const ADD_USERS_GROUP = "ADD_USERS_GROUP"
 export const REMOVE_USERS_GROUP = "REMOVE_USERS_GROUP"
 export const DELETE_CHAT = "DELETE_CHAT"
 export const GET_CHAT = "GET_CHAT"
+export const GET_CHAT_MEMBERS = "GET_CHAT_MEMBERS";

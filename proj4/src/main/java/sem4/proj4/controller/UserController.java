@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import sem4.proj4.entity.User;
 import sem4.proj4.exception.UserException;
+import sem4.proj4.request.UpdateProfileRequest;
 import sem4.proj4.request.UpdateUserRequest;
 import sem4.proj4.response.ApiResponse;
 import sem4.proj4.service.UserService;
@@ -39,12 +41,28 @@ public class UserController {
   }
 
   @PutMapping("/update")
-  public ResponseEntity<ApiResponse> updateUserHandler(@ModelAttribute  UpdateUserRequest req,@RequestHeader("Authorization") String token) throws UserException {
-        User user = userService.findUserProfile(token);
-        userService.updateUser(user.getId(), req);
+  public ResponseEntity<ApiResponse> updateUserHandler(@ModelAttribute UpdateUserRequest req,
+      @RequestHeader("Authorization") String token) throws UserException {
+    User user = userService.findUserProfile(token);
+    userService.updateUser(user.getId(), req);
 
-        ApiResponse response = new ApiResponse("user update success",true);
-        return new ResponseEntity<ApiResponse>(response,HttpStatus.OK);
+    ApiResponse response = new ApiResponse("user update success", true);
+    return new ResponseEntity<ApiResponse>(response, HttpStatus.OK);
   }
 
+  @PutMapping("/updateProfile")
+  public ResponseEntity<ApiResponse> updateProfileHandler(@ModelAttribute UpdateProfileRequest req,
+      @RequestHeader("Authorization") String token) throws UserException {
+    User user = userService.findUserProfile(token);
+    userService.updateProfile(user.getId(), req);
+
+    ApiResponse response = new ApiResponse("profile update success", true);
+    return new ResponseEntity<ApiResponse>(response, HttpStatus.OK);
+  }
+  @GetMapping("/profileUser/{id}")
+  public ResponseEntity<User> getUserProfileById(@PathVariable("id") int id) throws UserException {
+    User user = userService.findUserById(id);
+    return new ResponseEntity<User>(user, HttpStatus.OK);
+  }
+  
 }

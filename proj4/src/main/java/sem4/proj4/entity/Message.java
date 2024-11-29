@@ -30,6 +30,8 @@ public class Message {
   @Column
   private String content;
   @Column
+  private String imageUrl;
+  @Column
   @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
   private LocalDateTime timestamp;
 
@@ -41,8 +43,9 @@ public class Message {
   @JoinColumn(name = "chat_id")
   private Chat chat;
 
-  public Message(String content, User user, Chat chat) {
+  public Message(String content,String imageUrl, User user, Chat chat) {
     this.content = content;
+    this.imageUrl = imageUrl;
     this.user = user;
     this.chat = chat;
     this.timestamp = LocalDateTime.now();

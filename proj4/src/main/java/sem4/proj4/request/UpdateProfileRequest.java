@@ -12,6 +12,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class UpdateProfileRequest {
+  private String profile_picture;
+  private String email;
+  private String full_name;
   private String bio;
   private String gender;
   private String phone;

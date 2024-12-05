@@ -8,7 +8,7 @@ import wards from './Data/vnWards.json';
 
 const UserProfileCard = ({ handleNavigate }) => {
   const dispatch = useDispatch();
-  const user = useSelector((state) => state.auth.reqUser);
+  const user = useSelector((store) => store.auth.reqUser);
   const token = localStorage.getItem('token');
   const [isEditing, setIsEditing] = useState(false);
   const [selectedProvince, setSelectedProvince] = useState('');
@@ -22,11 +22,11 @@ const UserProfileCard = ({ handleNavigate }) => {
     address: ''
   });
 
-  useEffect(() => {
-    if (token) {
-      dispatch(currenUser(token));
-    }
-  }, [dispatch, token]);
+  // useEffect(() => {
+  //   if (token) {
+  //     dispatch(currenUser(token));
+  //   }
+  // }, [dispatch, token]);
 
   useEffect(() => {
     if (user) {
@@ -41,37 +41,34 @@ const UserProfileCard = ({ handleNavigate }) => {
         dob: user.dob || '',
         address: user.address || ''
       });
+      //console.log('User data updated:', user);
     }
+    
   }, [user]);
+
+  useEffect(() => {
+    setFormData((prevData) => ({
+      ...prevData,
+      address: `${selectedProvince}, ${selectedDistrict}, ${selectedWard}`
+    }));
+  }, [selectedProvince, selectedDistrict, selectedWard]);
 
   const handleProvinceChange = (e) => {
     const province = e.target.value;
     setSelectedProvince(province);
     setSelectedDistrict('');
     setSelectedWard('');
-    setFormData((prevData) => ({
-      ...prevData,
-      address: `${province}, ,`
-    }));
   };
 
   const handleDistrictChange = (e) => {
     const district = e.target.value;
     setSelectedDistrict(district);
     setSelectedWard('');
-    setFormData((prevData) => ({
-      ...prevData,
-      address: `${selectedProvince}, ${district},`
-    }));
   };
 
   const handleWardChange = (e) => {
     const ward = e.target.value;
     setSelectedWard(ward);
-    setFormData((prevData) => ({
-      ...prevData,
-      address: `${selectedProvince}, ${selectedDistrict}, ${ward}`
-    }));
   };
 
   const handleChange = (e) => {
@@ -84,7 +81,9 @@ const UserProfileCard = ({ handleNavigate }) => {
 
   const handleSave = async () => {
     try {
+      //console.log('Saving formData:', formData);
       await dispatch(updateProfile(formData, token));
+      //dispatch(currenUser(token));
       setIsEditing(false);
     } catch (error) {
       console.error("Error updating profile:", error);
@@ -109,10 +108,17 @@ const UserProfileCard = ({ handleNavigate }) => {
   };
 
   const maskEmail = (email) => {
-    const [localPart, domain] = email.split('@');
+    if (!email) return 'No Email Provided';
+
+    const parts = email.split('@');
+    if (parts.length !== 2) return 'Invalid Email';
+
+    const [localPart, domain] = parts;
+
     if (localPart.length <= 2) {
-      return `${localPart[0]}*@${domain}`;
+      return `*@${domain}`;
     }
+
     const maskedLocal = localPart.slice(0, -2) + '**';
     return `${maskedLocal}@${domain}`;
   };
@@ -174,14 +180,17 @@ const UserProfileCard = ({ handleNavigate }) => {
                   </div>
                   <div className="flex items-center">
                     <label htmlFor="gender" className="w-1/5 text-sm font-medium text-gray-700 dark:text-gray-300">Gender:</label>
-                    <input
-                      type="text"
-                      id="gender"
+                    <select
                       name="gender"
                       value={formData.gender}
                       onChange={handleChange}
-                      className="flex-1 p-1 text-sm border border-gray-300 rounded-md shadow-sm focus:ring-teal-500 focus:border-teal-500 dark:bg-gray-700 dark:border-gray-600"
-                    />
+                      className="mt-1 block w-4/5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+                    >
+                      <option value="">Select Gender</option>
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                      <option value="other">Other</option>
+                    </select>
                   </div>
                   <div className="flex items-center">
                     <label htmlFor="phone" className="w-1/5 text-sm font-medium text-gray-700 dark:text-gray-300">Phone:</label>

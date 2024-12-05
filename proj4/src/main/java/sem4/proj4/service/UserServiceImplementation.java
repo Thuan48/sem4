@@ -19,7 +19,6 @@ import sem4.proj4.exception.UserException;
 import sem4.proj4.repository.UserRepository;
 import sem4.proj4.request.UpdateProfileRequest;
 import sem4.proj4.request.UpdateUserRequest;
-import sem4.proj4.request.UserDto;
 
 @Service
 public class UserServiceImplementation implements UserService {
@@ -30,7 +29,7 @@ public class UserServiceImplementation implements UserService {
   private TokenProvider token;
 
   @Autowired
-    private SimpMessagingTemplate messagingTemplate;
+  private SimpMessagingTemplate messagingTemplate;
 
   @Value("${config-upload-dir}")
   private String uploadDir;
@@ -87,9 +86,10 @@ public class UserServiceImplementation implements UserService {
 
     User updatedUser = userRepo.save(user);
 
-    UserDto userDto = new UserDto(updatedUser.getId(), updatedUser.getFull_name(), updatedUser.getProfile_picture());
+    // UserDto userDto = new UserDto(updatedUser.getId(),
+    // updatedUser.getFull_name(), updatedUser.getProfile_picture());
 
-    messagingTemplate.convertAndSend("/topic/userUpdates", userDto);
+    messagingTemplate.convertAndSend("/topic/userUpdates", updatedUser);
 
     return updatedUser;
   }
@@ -114,34 +114,29 @@ public class UserServiceImplementation implements UserService {
   public User updateProfile(Integer userId, UpdateProfileRequest req) throws UserException {
     User user = findUserById(userId);
 
-    if (req.getBio() != null) {
+    if (req.getBio() != null && !req.getBio().isEmpty()) {
       user.setBio(req.getBio());
     }
-
-    if (req.getAddress() != null) {
+    if (req.getGender() != null && !req.getGender().isEmpty()) {
+      user.setGender(req.getGender());
+    }
+    if (req.getPhone() != null && !req.getPhone().isEmpty()) {
+      user.setPhone(req.getPhone());
+    }
+    if (req.getDob() != null) {
+      user.setDob(req.getDob());
+    }
+    if (req.getAddress() != null && !req.getAddress().isEmpty()) {
       user.setAddress(req.getAddress());
     }
 
-    if (req.getGender() != null) {
-      user.setGender(req.getGender());
-    }
+    User updatedUser = userRepo.save(user);
 
-    if (req.getPhone() != null) {
-      user.setPhone(req.getPhone());
-    }
+    System.out.println("updatedUser: " + updatedUser);
 
-    if(req.getDob() != null) {
-      user.setDob(req.getDob());
-    }
-
-     User updatedUser = userRepo.save(user);
-
-    UserDto userDto = new UserDto(updatedUser.getId(), updatedUser.getFull_name(), updatedUser.getProfile_picture());
-
-    messagingTemplate.convertAndSend("/topic/userUpdates", userDto);
+    messagingTemplate.convertAndSend("/topic/userUpdates", updatedUser);
 
     return updatedUser;
-    
   }
 
 }

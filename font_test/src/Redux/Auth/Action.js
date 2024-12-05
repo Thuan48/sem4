@@ -75,10 +75,10 @@ export const searchUser = (data) => async (dispatch) => {
 
 export const updateUser = (formData, token) => async (dispatch) => {
   try {
-    const res = await fetch(`${BASE_API_URL}/api/users/update`, { 
+    const res = await fetch(`${BASE_API_URL}/api/users/update`, {
       method: "PUT",
       headers: {
-        Authorization: `Bearer ${token}` 
+        Authorization: `Bearer ${token}`
       },
       body: formData,
     });
@@ -91,16 +91,21 @@ export const updateUser = (formData, token) => async (dispatch) => {
 };
 export const updateProfile = (formData, token) => async (dispatch) => {
   try {
+    const data = new FormData();
+    data.append('bio', formData.bio);
+    data.append('gender', formData.gender);
+    data.append('phone', formData.phone);
+    data.append('dob', formData.dob);
+    data.append('address', formData.address);
     const res = await fetch(`${BASE_API_URL}/api/users/updateProfile`, {
       method: "PUT",
       headers: {
-        Authorization: `Bearer ${token}`
+        Authorization: `Bearer ${token}`,
+        //"Content-Type": "application/json",
       },
-      body: formData,
+      body: data,
     });
-
-    const resData = await res.json();
-    dispatch({ type: UPDATE_USER_PROFILE, payload: resData });
+    dispatch({ type: UPDATE_USER_PROFILE, payload: formData });
   } catch (error) {
     console.log("catch error:", error);
   }

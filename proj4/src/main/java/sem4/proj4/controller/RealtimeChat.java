@@ -30,6 +30,11 @@ public class RealtimeChat {
     return message;
   }
 
+  @MessageMapping("/profileUpdate")
+  public void profileUpdate(@Payload User updatedUser) {
+    simpMessagingTemplate.convertAndSend("/topic/profile", updatedUser);
+  }
+
   @MessageMapping("/addUser")
   public void addUserToGroup(@Payload User user, SimpMessageHeaderAccessor headerAccessor) {
     simpMessagingTemplate.convertAndSend("/topic/notifications",

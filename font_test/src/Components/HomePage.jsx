@@ -24,6 +24,7 @@ import { sendNotification } from '../Redux/Notification/Action';
 import EmojiPicker from 'emoji-picker-react';
 import UserProfileCard from './Profile/UserProfileCard';
 import UserCard from './Profile/UserCard';
+import { REQ_USER, UPDATE_USER, UPDATE_USER_PROFILE } from '../Redux/Auth/ActionType';
 
 export const HomePage = () => {
   const [isConnect, setIsConnect] = useState(false);
@@ -292,7 +293,6 @@ export const HomePage = () => {
     if (stompClient) {
       stompClient.subscribe('/chatList', onChatListReceive);
       stompClient.subscribe(`/topic/notifications`, onNotificationReceive);
-      stompClient.subscribe('/users/updates', onUserUpdateReceive);
       if (currentChat && currentChat.id) {
         stompClient.subscribe("/group/" + currentChat.id.toString(), onMessageRevice);
         stompClient.subscribe("/group/" + currentChat.id.toString() + "/delete", onDeleteMessageReceive);
@@ -304,17 +304,23 @@ export const HomePage = () => {
   };
 
   useEffect(() => {
-    if (isConnect && stompClient && auth.reqUser && currentChat) {
+    if (stompClient && currentChat) {
       const messsageSub = stompClient.subscribe("/group/" + currentChat.id.toString(), onMessageRevice);
       const deleteMesssageSub = stompClient.subscribe("/group/" + currentChat.id.toString() + "/delete");
-      const userUpdateSubscription = stompClient.subscribe('/topic/userUpdates', onUserUpdateReceive);
+      const userUpdateSub = stompClient.subscribe('/topic/userUpdates', (payload) => {
+        const updatedUser = JSON.parse(payload.body);
+        if (updatedUser.id === auth.reqUser.id) {
+          dispatch({ type: UPDATE_USER_PROFILE, payload: updatedUser });
+          //dispatch({ type: UPDATE_USER, payload: updatedUser });
+        }
+      });
       return () => {
         messsageSub.unsubscribe();
         deleteMesssageSub.unsubscribe();
-        userUpdateSubscription.unsubscribe();
+        userUpdateSub.unsubscribe();
       }
     }
-  }, [isConnect, stompClient, auth.reqUser, currentChat]);
+  }, [stompClient, currentChat, dispatch]);
 
   useEffect(() => {
     connect();
@@ -326,18 +332,6 @@ export const HomePage = () => {
     }
   }, [message.newMessage, stompClient])
 
-  const onUserUpdateReceive = (payload) => {
-    console.log('onUserUpdateReceive payload:', payload);
-    console.log('Payload headers:', payload.headers);
-    console.log('Payload command:', payload.command);
-    console.log('Payload body (raw):', payload.body);
-
-    // Parse the payload body
-    const userUpdate = JSON.parse(payload.body);
-    console.log('Parsed userUpdate:', userUpdate);
-    dispatch(updateUser(userUpdate));
-    dispatch(updateProfile(userUpdate));
-  };
   const onChatListReceive = (payload) => {
     const chatList = JSON.parse(payload.body);
     setChatList(chatList);

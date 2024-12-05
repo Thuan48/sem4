@@ -28,7 +28,7 @@ export const authReducer = (store = initialvalue, { type, payload }) => {
       ...store, reqUser: payload };
   }
   else if(type === UPDATE_USER_PROFILE){
-    return { ...store, updateProfile: payload }
+    return { ...store, reqUser: payload }
   }
   else if(type === GET_USER_PROFILE){
     return { ...store, getUserProfile: payload }

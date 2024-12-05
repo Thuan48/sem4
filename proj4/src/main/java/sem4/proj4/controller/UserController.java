@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -56,6 +57,7 @@ public class UserController {
     User user = userService.findUserProfile(token);
     userService.updateProfile(user.getId(), req);
 
+    //simpMessagingTemplate.convertAndSend("/topic/profile", updatedUser);
     ApiResponse response = new ApiResponse("profile update success", true);
     return new ResponseEntity<ApiResponse>(response, HttpStatus.OK);
   }

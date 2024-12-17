@@ -99,7 +99,7 @@ public class ChatController {
 
     User reqUser = userService.findUserProfile(jwt);
 
-    Chat chat = chatService.removeFromGroup(chatId, userId, reqUser);
+    chatService.removeFromGroup(chatId, userId, reqUser);
 
     ApiResponse response = new ApiResponse("User removed successfully", true);
     return new ResponseEntity<>(response, HttpStatus.OK);
@@ -119,7 +119,7 @@ public class ChatController {
   }
 
   @GetMapping("/getChats")
-  public List<ChatDto> getChats(@RequestHeader("Authorization") String jwt)throws ChatException,UserException {
+  public List<ChatDto> getChats(@RequestHeader("Authorization") String jwt) throws ChatException, UserException {
     User reqUser = userService.findUserProfile(jwt);
 
     return chatService.getChatsWithLastMessage(reqUser.getId());
@@ -129,8 +129,8 @@ public class ChatController {
   public ResponseEntity<List<User>> getChatMembers(@PathVariable Integer chatId,
       @RequestHeader("Authorization") String jwt) throws ChatException, UserException {
 
-    User reqUser = userService.findUserProfile(jwt);
-    List<User> members = chatService.getChatMembers(chatId, reqUser);
+    userService.findUserProfile(jwt);
+    List<User> members = chatService.getChatMembers(chatId);
 
     return new ResponseEntity<>(members, HttpStatus.OK);
   }

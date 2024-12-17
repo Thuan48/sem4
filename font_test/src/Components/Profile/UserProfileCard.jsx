@@ -22,11 +22,11 @@ const UserProfileCard = ({ handleNavigate }) => {
     address: ''
   });
 
-  // useEffect(() => {
-  //   if (token) {
-  //     dispatch(currenUser(token));
-  //   }
-  // }, [dispatch, token]);
+  useEffect(() => {
+    if (token) {
+      dispatch(currenUser(token));
+    }
+  }, [dispatch, token]);
 
   useEffect(() => {
     if (user) {
@@ -83,7 +83,7 @@ const UserProfileCard = ({ handleNavigate }) => {
     try {
       //console.log('Saving formData:', formData);
       await dispatch(updateProfile(formData, token));
-      //dispatch(currenUser(token));
+      await dispatch(currenUser(token));
       setIsEditing(false);
     } catch (error) {
       console.error("Error updating profile:", error);

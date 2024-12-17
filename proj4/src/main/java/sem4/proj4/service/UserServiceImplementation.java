@@ -89,7 +89,7 @@ public class UserServiceImplementation implements UserService {
     // UserDto userDto = new UserDto(updatedUser.getId(),
     // updatedUser.getFull_name(), updatedUser.getProfile_picture());
 
-    messagingTemplate.convertAndSend("/topic/userUpdates", updatedUser);
+    messagingTemplate.convertAndSendToUser(user.getEmail(), "/queue/userUpdates", updatedUser);
 
     return updatedUser;
   }
@@ -131,8 +131,6 @@ public class UserServiceImplementation implements UserService {
     }
 
     User updatedUser = userRepo.save(user);
-
-    System.out.println("updatedUser: " + updatedUser);
 
     messagingTemplate.convertAndSend("/topic/userUpdates", updatedUser);
 

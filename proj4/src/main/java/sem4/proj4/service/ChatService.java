@@ -29,5 +29,7 @@ public interface ChatService {
   
   public List<ChatDto> getChatsWithLastMessage(Integer userId) throws ChatException,UserException;
 
-public List<User> getChatMembers(Integer chatId, User reqUser) throws ChatException;
+  public List<User> getChatMembers(Integer chatId) throws ChatException;
+
+  public void updateChatListForUsers(Chat chat);
 }

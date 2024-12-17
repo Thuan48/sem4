@@ -1,4 +1,4 @@
-package sem4.proj4.config; 
+package sem4.proj4.config;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -39,7 +39,10 @@ public class AppConfig {
   @Bean
   public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration cfg = new CorsConfiguration();
-    cfg.setAllowedOrigins(Arrays.asList("http://localhost:5173", "http://127.0.0.1:5173"));
+    cfg.setAllowedOrigins(
+        Arrays.asList(
+            "http://localhost:5173", "http://127.0.0.1:5173",
+            "http://localhost:60013", "http://127.0.0.1:60013"));
     cfg.setAllowedMethods(Collections.singletonList("*"));
     cfg.setAllowCredentials(true);
     cfg.setAllowedHeaders(Collections.singletonList("*"));
@@ -53,6 +56,7 @@ public class AppConfig {
   public PasswordEncoder passwordEncoder() {
     return new BCryptPasswordEncoder();
   }
+
   @Bean
   public CharacterEncodingFilter characterEncodingFilter() {
     CharacterEncodingFilter filter = new CharacterEncodingFilter();

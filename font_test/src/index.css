@@ -7,6 +7,7 @@ body {
   font-family: 'Inter', sans-serif;
   background-size: 200%;
   background-color: darkgrey;
+  font-family: 'Inter', sans-serif;
 }
 .bg-background {
   background-color: #f8f9fa;
@@ -14,6 +15,91 @@ body {
 
 .dark .bg-background {
   background-color: #121212;
+}
+
+.scrollbar-custom::-webkit-scrollbar {
+  width: 8px;
+}
+
+.scrollbar-custom::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.scrollbar-custom::-webkit-scrollbar-thumb {
+  background-color: #4ade80;
+  border-radius: 10px;
+  border: 2px solid #f1f1f1;
+}
+
+.scrollbar-custom {
+  scrollbar-width: thin;
+  scrollbar-color: darkgrey #1a202c;
+}
+
+.dark .scrollbar-custom::-webkit-scrollbar-track {
+  background: #1a202c;
+}
+
+.dark .scrollbar-custom::-webkit-scrollbar-thumb {
+  background-color: #2b6cb0;
+  border: 2px solid #1a202c;
+}
+
+.dark .scrollbar-custom {
+  scrollbar-width: thin;
+  scrollbar-color: #2b6cb0 #1a202c;
+}
+
+.chat-item {
+  transition: background-color 0.3s ease;
+}
+
+.chat-item:hover {
+  background-color: rgba(0, 149, 119, 0.1);
+}
+
+.dark .chat-item:hover {
+  background-color: rgba(0, 149, 119, 0.2);
+}
+
+.modal {
+  display: none;
+}
+
+.modal.open {
+  display: block;
+}
+
+.chat-item .content {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.message-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.message-content {
+  flex: 1;
+}
+
+.message-actions {
+  margin-left: 10px;
+  cursor: pointer;
+}
+
+.message-timestamp {
+  font-size: 0.8em;
+  color: gray;
+}
+
+.req-user-message .message-content {
+  text-align: right;
 }
 
 @tailwind base;

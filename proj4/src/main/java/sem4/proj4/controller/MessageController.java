@@ -45,7 +45,7 @@ public class MessageController {
       @RequestParam("content") String content,
       @RequestPart(value = "image", required = false) MultipartFile image,
       @RequestHeader("Authorization") String jwt) throws UserException, ChatException {
-    User user = userService.findUserProfile(jwt);
+    userService.findUserProfile(jwt);
     SendMessageRequest req = new SendMessageRequest(userId, chatId, content, image);
     Message message = messageService.sendMessage(req);
 

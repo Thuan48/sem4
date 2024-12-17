@@ -3,14 +3,14 @@ import { AiOutlineSearch, AiOutlineDelete } from "react-icons/ai"
 import { MdDynamicFeed, MdGroupAdd, MdOutlinePersonRemoveAlt1 } from "react-icons/md";
 import { GrLogout } from "react-icons/gr";
 import { IoIosPersonAdd } from "react-icons/io";
-import { FaSignOutAlt } from "react-icons/fa";
+import { FaSignOutAlt, FaUserFriends } from "react-icons/fa";
 import { BsEmojiSmile, BsMicFill, BsThreeDotsVertical, BsSun, BsMoon, BsArrowUp } from "react-icons/bs"
 import { ImAttachment, ImProfile } from "react-icons/im"
 import { useNavigate } from 'react-router-dom';
 import { IconButton, Menu, MenuItem, Snackbar, SnackbarContent } from '@mui/material';
 import { useDispatch, useSelector } from 'react-redux';
-import { logout, currenUser, searchUser, updateUser, updateProfile } from '../Redux/Auth/Action';
-import { addUserGroup, createChat, deleteChat, getChatMembers, getChats, getUserChat, removeUserGroup } from '../Redux/Chat/Action';
+import { logout, currenUser, searchUser } from '../Redux/Auth/Action';
+import { addUserGroup, createChat, deleteChat, getChatMembers, getChats, removeUserGroup } from '../Redux/Chat/Action';
 import { createMessage, deleteMessage, getAllMessage } from '../Redux/Message/Action';
 import SockJS from "sockjs-client/dist/sockjs";
 import { over } from "stompjs";
@@ -24,7 +24,10 @@ import { sendNotification } from '../Redux/Notification/Action';
 import EmojiPicker from 'emoji-picker-react';
 import UserProfileCard from './Profile/UserProfileCard';
 import UserCard from './Profile/UserCard';
-import { REQ_USER, UPDATE_USER, UPDATE_USER_PROFILE } from '../Redux/Auth/ActionType';
+import { UPDATE_USER_PROFILE } from '../Redux/Auth/ActionType';
+import { BASE_API_URL } from '../config/api';
+import FriendCard from './Friends/FriendCard';
+import '../index.css';
 
 export const HomePage = () => {
   const [isConnect, setIsConnect] = useState(false);
@@ -53,17 +56,23 @@ export const HomePage = () => {
   const [userCardOpen, setUserCardOpen] = useState(false);
   const [selectedUserCardId, setSelectedUserCardId] = useState(null);
   const [anchorElSecondMenu, setAnchorElSecondMenu] = useState(null);
+  const [query, setQuery] = useState("");
+  const [isFriendCardOpen, setIsFriendCardOpen] = useState(false);
 
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { auth, chat, message } = useSelector(store => store);
+  const { auth, chat, message, friends} = useSelector(store => store);
   const token = localStorage.getItem("token");
   const messageEndRef = useRef(null);
   const open = Boolean(anchorEl);
   const isAdmin = currentChat?.userAdminIds?.includes(auth.reqUser.id) || false;
   const pageSize = 7;
   const openSecondMenu = Boolean(anchorElSecondMenu);
+  const { friendsList, searchFriend, loading, error } = friends;
 
+  const toggleFriendCard = () => {
+    setIsFriendCardOpen(!isFriendCardOpen);
+  };
   const handleCloseSecondMenu = () => {
     setAnchorElSecondMenu(null);
   };
@@ -177,6 +186,7 @@ export const HomePage = () => {
       });
     });
     if (stompClient) {
+      stompClient.subscribe('/user/queue/chatList', onChatListReceive);
       stompClient.subscribe("/group/" + item.id.toString(), onMessageRevice);
       stompClient.subscribe("/group/" + item.id.toString() + "/delete", onDeleteMessageReceive);
     }
@@ -266,10 +276,11 @@ export const HomePage = () => {
   };
   const connect = async () => {
     try {
-      const sock = new SockJS("http://localhost:8080/ws");
+      const sock = new SockJS(`${BASE_API_URL}/ws`);
       const temp = over(sock);
       setStompClient(temp);
       const headers = {
+        email: auth.reqUser.email,
         Authorization: `Bearer ${token}`,
         "X-XSRF-TOKEN": getCookie("XSRF-TOKEN")
       };
@@ -291,7 +302,6 @@ export const HomePage = () => {
   const onConnect = () => {
     setIsConnect(true);
     if (stompClient) {
-      stompClient.subscribe('/chatList', onChatListReceive);
       stompClient.subscribe(`/topic/notifications`, onNotificationReceive);
       if (currentChat && currentChat.id) {
         stompClient.subscribe("/group/" + currentChat.id.toString(), onMessageRevice);
@@ -305,6 +315,7 @@ export const HomePage = () => {
 
   useEffect(() => {
     if (stompClient && currentChat) {
+      const chatListSub = stompClient.subscribe('/user/queue/chatList', onChatListReceive);
       const messsageSub = stompClient.subscribe("/group/" + currentChat.id.toString(), onMessageRevice);
       const deleteMesssageSub = stompClient.subscribe("/group/" + currentChat.id.toString() + "/delete");
       const userUpdateSub = stompClient.subscribe('/topic/userUpdates', (payload) => {
@@ -315,6 +326,7 @@ export const HomePage = () => {
         }
       });
       return () => {
+        chatListSub.unsubscribe();
         messsageSub.unsubscribe();
         deleteMesssageSub.unsubscribe();
         userUpdateSub.unsubscribe();
@@ -332,10 +344,6 @@ export const HomePage = () => {
     }
   }, [message.newMessage, stompClient])
 
-  const onChatListReceive = (payload) => {
-    const chatList = JSON.parse(payload.body);
-    setChatList(chatList);
-  };
   const onDeleteMessageReceive = (payload) => {
     const deletedMessage = JSON.parse(payload.body);
     setMessages(prevMessages => prevMessages.filter(msg => msg.id !== deletedMessage.id));
@@ -355,8 +363,9 @@ export const HomePage = () => {
         }
         return chatItem;
       }).sort((a, b) => {
-        if (b.unreadCount > a.unreadCount) return 1;
-        if (b.unreadCount < a.unreadCount) return -1;
+        if (b.unreadCount !== a.unreadCount) {
+          return b.unreadCount - a.unreadCount;
+        }
         return new Date(b.lastMessageTimestamp) - new Date(a.lastMessageTimestamp);
       });
 
@@ -377,6 +386,10 @@ export const HomePage = () => {
     handleShowSnackbar(notification.message);
     dispatch(sendNotification(notification.title, notification.message));
   };
+  const onChatListReceive = (payload) => {
+    const updatedChatList = JSON.parse(payload.body);
+    //dispatch(updateChatList(updatedChatList));
+  }
 
   useEffect(() => {
     if (chat.chats.length > 0) {
@@ -399,8 +412,13 @@ export const HomePage = () => {
   }, [auth.reqUser, navigate]);
   useEffect(() => {
     //dispatch(getUserChat({ token }));
+    const fetchChats = () => {
     dispatch(getChats({ token }));
-  }, [chat.createChat, chat.createGroup, dispatch, token]);
+    };
+    fetchChats();
+    const interval = setInterval(fetchChats, 500);
+    return () => clearInterval(interval);
+  }, [dispatch, token]);
   useEffect(() => {
 
     if (currentChat?.id) {
@@ -431,7 +449,7 @@ export const HomePage = () => {
     : "https://cdn.pixabay.com/photo/2012/04/26/19/43/profile-42914_640.png";
 
   return (
-    <div className={`relative ${isDarkMode ? 'dark' : ''}`}>
+    <div className={`relative ${isDarkMode ? 'dark' : ''} scrollbar-custom`}>
       <div className="w-full py-14 bg-primary dark:bg-gray-800"></div>
       <div className="flex bg-background dark:bg-gray-900 h-[90vh] pt-5 absolute top-6 left-6 right-6 rounded-lg shadow-lg overflow-hidden">
         <div className="w-1/3 bg-card dark:bg-gray-800 text-card-foreground dark:text-white h-full border-r border-border dark:border-gray-700">
@@ -444,6 +462,12 @@ export const HomePage = () => {
               handleNavigate={() => setUserCardOpen(false)}
             />
           )}
+          {isFriendCardOpen && (
+            <div className="friend-card-modal">
+              <FriendCard handleNavigate={() => setIsFriendCardOpen(false)} />
+            </div>
+          )}
+          
           {!isProfile && !isGroup && (
             <div className="flex flex-col h-full">
               <div className="flex justify-between items-center p-4 border-b border-border dark:border-gray-700">
@@ -471,6 +495,9 @@ export const HomePage = () => {
                   <MenuItem onClick={handleNavigateProfile}>
                     <ImProfile />
                     Profile
+                  </MenuItem>
+                  <MenuItem onClick={toggleFriendCard}> 
+                    <FaUserFriends />Friends
                   </MenuItem>
                   <MenuItem onClick={handleLogout}>
                     <GrLogout />
@@ -695,55 +722,7 @@ export const HomePage = () => {
           )}
         </div>
       </div>
-      <style>
-        {`
-          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
-          body {
-            font-family: 'Inter', sans-serif;
-          }
-          .chat-item {
-            transition: background-color 0.3s ease;
-          }
-          .chat-item:hover {
-            background-color: rgba(0, 149, 119, 0.1);
-          }
-          .dark .chat-item:hover {
-            background-color: rgba(0, 149, 119, 0.2);
-          }
-            .modal {
-            display: none;
-          }
-          .modal.open {
-            display: block; 
-          }
-          .chat-item .content {
-            white-space: nowrap;        
-            overflow: hidden;         
-            text-overflow: ellipsis;   
-            max-width: 200px;          
-          }
-          .message-card {
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-          }
-          .message-content {
-            flex: 1;
-          }
-          .message-actions {
-            margin-left: 10px;
-           cursor: pointer;
-          }
-          .message-timestamp {
-            font-size: 0.8em;
-            color: gray;
-          }
-          .req-user-message .message-content {
-            text-align: right;
-          }
-        `}
-      </style>
+
       <Snackbar
         open={snackbarOpen}
         autoHideDuration={6000}

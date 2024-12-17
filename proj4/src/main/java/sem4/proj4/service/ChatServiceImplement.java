@@ -12,6 +12,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import sem4.proj4.entity.Chat;
@@ -32,6 +33,8 @@ public class ChatServiceImplement implements ChatService {
   ChatRepository chatRepository;
   @Autowired
   MessageRepository messageRepository;
+  @Autowired
+  private SimpMessagingTemplate simpMessagingTemplate;
   @Autowired
   UserService userService;
   @Value("${config-upload-dir}")
@@ -55,7 +58,9 @@ public class ChatServiceImplement implements ChatService {
     chat.getUsers().add(reqUser);
     chat.setGroup(false);
 
-    return chatRepository.save(chat);
+    Chat savedChat = chatRepository.save(chat);
+    updateChatListForUsers(savedChat);
+    return savedChat;
   }
 
   @Override
@@ -105,7 +110,9 @@ public class ChatServiceImplement implements ChatService {
       group.getUsers().add(user);
     }
 
-    return chatRepository.save(group);
+    Chat savedChat = chatRepository.save(group);
+    updateChatListForUsers(savedChat);
+    return savedChat;
   }
 
   @Override
@@ -173,6 +180,7 @@ public class ChatServiceImplement implements ChatService {
     if (opt.isPresent()) {
       Chat chat = opt.get();
       chatRepository.deleteById(chat.getId());
+      updateChatListForUsers(chat);
     }
   }
 
@@ -215,15 +223,29 @@ public class ChatServiceImplement implements ChatService {
       }
       chatDtos.add(chatDto);
     }
+    
     return chatDtos;
   }
 
   @Override
-  public List<User> getChatMembers(Integer chatId, User reqUser) throws ChatException {
-    Chat chat = findChatById(chatId);
-    if (!chat.getUsers().contains(reqUser)) {
-      throw new ChatException("User is not a member of this chat");
+  public List<User> getChatMembers(Integer chatId) throws ChatException {
+    Optional<Chat> chatOptional = chatRepository.findById(chatId);
+    if (!chatOptional.isPresent()) {
+      throw new ChatException("Chat not found with id: " + chatId);
     }
-    return new ArrayList<>(chat.getUsers());
+    Chat chat = chatOptional.get();
+    Set<User> members = chat.getUsers();
+    return new ArrayList<>(members);
+  }
+  
+  public void updateChatListForUsers(Chat chat) {
+    try {
+      for (User member : chat.getUsers()) {
+        List<ChatDto> updatedChatList = getChatsWithLastMessage(member.getId());
+        simpMessagingTemplate.convertAndSendToUser(member.getEmail(), "/queue/chatList", updatedChatList);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
   }
 }

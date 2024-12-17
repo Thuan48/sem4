@@ -97,6 +97,7 @@ export const updateProfile = (formData, token) => async (dispatch) => {
     data.append('phone', formData.phone);
     data.append('dob', formData.dob);
     data.append('address', formData.address);
+
     const res = await fetch(`${BASE_API_URL}/api/users/updateProfile`, {
       method: "PUT",
       headers: {
@@ -105,6 +106,7 @@ export const updateProfile = (formData, token) => async (dispatch) => {
       },
       body: data,
     });
+    
     dispatch({ type: UPDATE_USER_PROFILE, payload: formData });
   } catch (error) {
     console.log("catch error:", error);

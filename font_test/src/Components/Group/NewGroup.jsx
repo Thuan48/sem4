@@ -18,7 +18,7 @@ const NewGroup = ({ groupMember, setIsGroup }) => {
     setProfilePicture(file);
   };
 
-  const handleCreateGroup = () => {
+  const handleCreateGroup = async () => {
     setLoading(true);
     const userIds = Array.from(groupMember).map(user => user.id);
 
@@ -33,8 +33,8 @@ const NewGroup = ({ groupMember, setIsGroup }) => {
       token,
     };
 
-    dispatch(createGroup(data));
-    setIsGroup(true);
+    await dispatch(createGroup(data));
+    setIsGroup(false);
     navigate("/");
   };
 

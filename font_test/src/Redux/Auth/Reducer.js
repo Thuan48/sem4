@@ -1,4 +1,4 @@
-import { CONFIRM_EMAIL, GET_USER_PROFILE, LOGIN, REGISTER, REQ_USER, SEARCH_USER, UPDATE_USER, UPDATE_USER_PROFILE } from "./ActionType"
+import { CHANGE_PASSWORD, CONFIRM_EMAIL, FORGOT_PASSWORD, GET_USER_PROFILE, LOGIN, REGISTER, REQ_USER, RESET_PASSWORD, SEARCH_USER, UPDATE_USER, UPDATE_USER_PROFILE } from "./ActionType"
 
 const initialvalue = {
   signup: null,
@@ -9,6 +9,9 @@ const initialvalue = {
   updateProfile: null,
   getUserProfile: null,
   emailConfirmation: null,
+  forgotPassword: null,
+  resetPassword: null,
+  changePassword: null,
 }
 export const authReducer = (store = initialvalue, { type, payload }) => {
   if (type === REGISTER) {
@@ -35,6 +38,15 @@ export const authReducer = (store = initialvalue, { type, payload }) => {
   }
   else if(type === CONFIRM_EMAIL){
     return { ...store, emailConfirmation: payload }
+  }
+  else if(type === FORGOT_PASSWORD){
+    return { ...store, forgotPassword: payload }
+  }
+  else if(type === RESET_PASSWORD){
+    return { ...store, resetPassword: payload }
+  }
+  else if(type === CHANGE_PASSWORD){
+    return { ...store, changePassword: payload }
   }
   return store;
 }

@@ -9,7 +9,8 @@ import {
   FRIENDS_LOADING,
   FRIENDS_ERROR,
   ADD_FRIEND_PENDING,
-  ADD_FRIEND_SUCCESS
+  ADD_FRIEND_SUCCESS,
+  SEARCH_USERS_TO_ADD
 } from "./ActionType";
 
 export const getFriendRequests = (token) => async (dispatch) => {
@@ -101,6 +102,29 @@ export const searchFriends = (keyword, token) => async (dispatch) => {
   }
 };
 
+export const searchUsersAdd = (keyword, token) => async (dispatch) => { 
+  dispatch({ type: FRIENDS_LOADING });
+  try {
+    const response = await fetch(`${BASE_API_URL}/api/users/search?name=${encodeURIComponent(keyword)}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to search users.');
+    }
+
+    const data = await response.json();
+    dispatch({ type: SEARCH_USERS_TO_ADD, payload: data }); 
+  } catch (error) {
+    dispatch({ type: FRIENDS_ERROR, payload: error.message });
+  }
+};
+
 export const addFriend = (friendId, token) => async (dispatch) => {
   dispatch({ type: ADD_FRIEND_PENDING, payload: friendId });
   try {
@@ -110,6 +134,7 @@ export const addFriend = (friendId, token) => async (dispatch) => {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`
       },
+      body: JSON.stringify({ friendId }),
     });
     if (!res.ok) {
       const errorData = await res.json();

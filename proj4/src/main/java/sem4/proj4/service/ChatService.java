@@ -32,4 +32,8 @@ public interface ChatService {
   public List<User> getChatMembers(Integer chatId) throws ChatException;
 
   public void updateChatListForUsers(Chat chat);
+  
+  void markMessagesAsRead(Integer chatId, Integer userId) throws UserException, ChatException;
+
+  Integer countUnreadMessages(Integer userId, Integer chatId) throws UserException, ChatException;
 }

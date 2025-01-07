@@ -8,7 +8,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -16,6 +18,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import sem4.proj4.entity.User;
 import sem4.proj4.exception.UserException;
+import sem4.proj4.request.ChangePasswordRequest;
+import sem4.proj4.request.ForgotPasswordRequest;
+import sem4.proj4.request.ResetPasswordRequest;
 import sem4.proj4.request.UpdateProfileRequest;
 import sem4.proj4.request.UpdateUserRequest;
 import sem4.proj4.response.ApiResponse;
@@ -56,14 +61,39 @@ public class UserController {
     User user = userService.findUserProfile(token);
     userService.updateProfile(user.getId(), req);
 
-    //simpMessagingTemplate.convertAndSend("/topic/profile", updatedUser);
+    // simpMessagingTemplate.convertAndSend("/topic/profile", updatedUser);
     ApiResponse response = new ApiResponse("profile update success", true);
     return new ResponseEntity<ApiResponse>(response, HttpStatus.OK);
   }
+
   @GetMapping("/profileUser/{id}")
   public ResponseEntity<User> getUserProfileById(@PathVariable("id") int id) throws UserException {
     User user = userService.findUserById(id);
     return new ResponseEntity<User>(user, HttpStatus.OK);
   }
-  
+
+  @PostMapping("/forgot-password")
+  public ResponseEntity<ApiResponse> forgotPassword(@RequestBody ForgotPasswordRequest request) throws UserException {
+    userService.initiatePasswordReset(request.getEmail());
+    ApiResponse response = new ApiResponse("Verification code sent to email. It is valid for 1 minute.", true);
+    return new ResponseEntity<ApiResponse>(response, HttpStatus.OK);
+  }
+
+  @PostMapping("/reset-password")
+  public ResponseEntity<ApiResponse> resetPassword(@RequestBody ResetPasswordRequest request) throws UserException {
+    userService.resetPassword(request.getEmail(), request.getCode(), request.getNewPassword());
+    ApiResponse response = new ApiResponse("Password has been reset successfully.", true);
+    return new ResponseEntity<ApiResponse>(response, HttpStatus.OK);
+  }
+
+  @PostMapping("/change-password")
+  public ResponseEntity<ApiResponse> changePasswordHandler(
+      @RequestHeader("Authorization") String token,
+      @RequestBody ChangePasswordRequest request) throws UserException {
+    User user = userService.findUserProfile(token);
+    userService.changePassword(user.getId(), request);
+    ApiResponse response = new ApiResponse("Password changed successfully.", true);
+    return new ResponseEntity<ApiResponse>(response, HttpStatus.OK);
+  }
+
 }

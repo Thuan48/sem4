@@ -46,7 +46,7 @@ const Signup = () => {
 
   return (
     <div className="min-h-screen flex justify-center items-center bg-gradient-to-br from-purple-600 via-pink-500 to-red-500 p-4"
-      style={{ background: `url('https://img3.thuthuatphanmem.vn/uploads/2019/10/10/background-anh-dong_032845920.gif') no-repeat center center fixed`, backgroundSize: 'cover' }}>
+      style={{ background: ` no-repeat center center fixed`, backgroundSize: 'cover' }}>
       <div className="absolute inset-0 bg-black opacity-50"></div>
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
@@ -145,6 +145,20 @@ const Signup = () => {
               onClick={() => navigate("/signin")}
             >
               Sign In
+            </Button>
+          </motion.div>
+          <motion.div
+            className='flex justify-center mt-4'
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.7 }}
+          >
+            <Button
+              variant='text'
+              className='text-white underline'
+              onClick={() => navigate("/forgot-password")}
+            >
+              Forgot Password?
             </Button>
           </motion.div>
         </div>

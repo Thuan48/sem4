@@ -1,5 +1,5 @@
 import { BASE_API_URL } from "../../config/api"
-import { CONFIRM_EMAIL, GET_USER_PROFILE, LOGIN, LOGOUT, REGISTER, REQ_USER, SEARCH_USER, UPDATE_USER, UPDATE_USER_PROFILE } from "./ActionType";
+import { CHANGE_PASSWORD, CONFIRM_EMAIL, FORGOT_PASSWORD, GET_USER_PROFILE, LOGIN, LOGOUT, REGISTER, REQ_USER, RESET_PASSWORD, SEARCH_USER, UPDATE_USER, UPDATE_USER_PROFILE } from "./ActionType";
 
 export const register = (data) => async (dispatch) => {
   try {
@@ -149,6 +149,63 @@ export const confirmEmail = (email) => async (dispatch) => {
     console.log("catch error:", error);
   }
 };
+
+export const forgotPassword = (email) => async (dispatch) => {
+  try {
+    const res = await fetch(`${BASE_API_URL}/api/users/forgot-password`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email })
+    });
+    const resData = await res.json();
+    dispatch({ type: FORGOT_PASSWORD, payload: resData });
+  } catch (error) {
+    console.log("catch error:", error);
+  }
+}
+
+export const resetPassword = (email, code, newPassword) => async (dispatch) => {
+  try {
+    const res = await fetch(`${BASE_API_URL}/api/users/reset-password`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email, code, newPassword })
+    });
+    const resData = await res.json();
+    dispatch({ type: RESET_PASSWORD, payload: resData });
+  } catch (error) {
+    console.log("catch error:", error);
+  }
+}
+
+export const changePassword = (token, oldPassword, newPassword) => async (dispatch) => {
+  try {
+    const res = await fetch(`${BASE_API_URL}/api/users/change-password`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ oldPassword, newPassword })
+    });
+
+    const resData = await res.json();
+
+    if (!res.ok) {
+      return { success: false, message: resData.message || "Failed to change password." };
+    }
+    
+    dispatch({ type: CHANGE_PASSWORD, payload: resData });
+    return { success: true, message: "Password changed successfully." };
+  } catch (error) {
+    console.log("catch error:", error);
+    return { success: false, message: "An unexpected error occurred." };
+  }
+}
 
 export const logout = () => async (dispatch) => {
   localStorage.removeItem("token");

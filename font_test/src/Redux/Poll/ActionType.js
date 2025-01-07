@@ -1,0 +1,9 @@
+export const CREATE_POLL = "CREATE_POLL";
+export const GET_POLL = "GET_POLL";
+export const GET_POLLS_BY_CHAT = "GET_POLLS_BY_CHAT";
+export const UPDATE_POLL = "UPDATE_POLL";
+export const DELETE_POLL = "DELETE_POLL";
+export const VOTE_POLL = "VOTE_POLL";
+export const GET_POLL_RESULTS = "GET_POLL_RESULTS";
+export const POLL_ERROR = "POLL_ERROR";
+export const GET_USER_VOTE = "GET_USER_VOTE";

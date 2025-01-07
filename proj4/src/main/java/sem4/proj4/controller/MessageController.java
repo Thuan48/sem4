@@ -44,9 +44,10 @@ public class MessageController {
       @RequestParam("chatId") Integer chatId,
       @RequestParam("content") String content,
       @RequestPart(value = "image", required = false) MultipartFile image,
+      @RequestPart(value = "audio", required = false) MultipartFile audio,
       @RequestHeader("Authorization") String jwt) throws UserException, ChatException {
     userService.findUserProfile(jwt);
-    SendMessageRequest req = new SendMessageRequest(userId, chatId, content, image);
+    SendMessageRequest req = new SendMessageRequest(userId, chatId, content, image, audio);
     Message message = messageService.sendMessage(req);
 
     return new ResponseEntity<>(message, HttpStatus.OK);
@@ -55,8 +56,8 @@ public class MessageController {
   @GetMapping("/chat/{chatId}")
   public ResponseEntity<List<Message>> getChatMessage(@PathVariable Integer chatId,
       @RequestHeader("Authorization") String jwt,
-      @RequestParam(defaultValue = "7") int pageSize,
-      @RequestParam(defaultValue = "0") int pageNumber) throws UserException, ChatException {
+      @RequestParam int pageSize,
+      @RequestParam int pageNumber) throws UserException, ChatException {
 
     User user = userService.findUserProfile(jwt);
     List<Message> messages = messageService.getChatMessages(chatId, user, pageSize, pageNumber);
@@ -80,4 +81,54 @@ public class MessageController {
 
     return new ResponseEntity<>(res, HttpStatus.OK);
   }
+  
+  @PostMapping("/mark-as-read")
+  public ResponseEntity<ApiResponse> markAsRead(
+      @RequestParam("chatId") Integer chatId,
+      @RequestParam("userId") Integer userId,
+      @RequestHeader("Authorization") String jwt) {
+    try {
+      userService.findUserProfile(jwt);
+      messageService.markMessagesAsRead(chatId, userId);
+      ApiResponse response = new ApiResponse("Unread count reset successfully.", false);
+      return new ResponseEntity<>(response, HttpStatus.OK);
+    } catch (UserException | ChatException e) {
+      ApiResponse response = new ApiResponse(e.getMessage(), true);
+      return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  @PostMapping("/toggle-pin")
+  public ResponseEntity<ApiResponse> togglePinMessage(
+      @RequestParam("messageId") Integer messageId,
+      @RequestHeader("Authorization") String jwt) {
+    try {
+      User user = userService.findUserProfile(jwt);
+      Integer userId = user.getId(); 
+      messageService.togglePinMessage(messageId, userId);
+      ApiResponse response = new ApiResponse("Message pin status toggled successfully.", false);
+      return new ResponseEntity<>(response, HttpStatus.OK);
+    } catch (UserException | ChatException e) {
+      ApiResponse response = new ApiResponse(e.getMessage(), true);
+      return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  @GetMapping("/chat/{chatId}/latest-pinned")
+  public ResponseEntity<Message> getLatestPinnedMessage(
+      @PathVariable Integer chatId,
+      @RequestHeader("Authorization") String jwt) {
+    try {
+      userService.findUserProfile(jwt);
+      Message latestPinned = messageService.getLatestPinnedMessage(chatId);
+      if (latestPinned != null) {
+        return new ResponseEntity<>(latestPinned, HttpStatus.OK);
+      } else {
+        return new ResponseEntity<>(null, HttpStatus.NO_CONTENT);
+      }
+    } catch (UserException | ChatException e) {
+      return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
+    }
+  }
+
 }

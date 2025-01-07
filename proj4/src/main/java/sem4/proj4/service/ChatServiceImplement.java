@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.Map;
+import java.util.HashMap;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,6 +37,8 @@ public class ChatServiceImplement implements ChatService {
   MessageRepository messageRepository;
   @Autowired
   private SimpMessagingTemplate simpMessagingTemplate;
+  @Autowired
+  private UnreadCountService unreadCountService;
   @Autowired
   UserService userService;
   @Value("${config-upload-dir}")
@@ -187,7 +191,18 @@ public class ChatServiceImplement implements ChatService {
   @Override
   public List<ChatDto> getChatsWithLastMessage(Integer userId) throws ChatException, UserException {
     List<Chat> chats = chatRepository.findChatByUserid(userId);
+    User userss = userService.findUserById(userId);
     List<ChatDto> chatDtos = new ArrayList<>();
+    List<Integer> chatIds = chats.stream().map(Chat::getId).collect(Collectors.toList());
+    
+    List<Object[]> unreadCounts = messageRepository.countUnreadMessagesPerChat(userId, chatIds);
+    Map<Integer, Integer> unreadCountMap = new HashMap<>();
+    for (Object[] obj : unreadCounts) {
+      Integer chatId = (Integer) obj[0];
+      Long count = (Long) obj[1];
+      unreadCountMap.put(chatId, count.intValue());
+    }
+
     for (Chat chat : chats) {
       Message lastMessage = messageRepository.findTopByChatOrderByTimestampDesc(chat);
       ChatDto chatDto = new ChatDto();
@@ -221,6 +236,8 @@ public class ChatServiceImplement implements ChatService {
         }
         chatDto.setUserAdminIds(null);
       }
+      Integer unreadCount = unreadCountService.getUnreadCount(userss, chat);
+      chatDto.setUnreadCount(unreadCount);
       chatDtos.add(chatDto);
     }
     
@@ -247,5 +264,40 @@ public class ChatServiceImplement implements ChatService {
     } catch (Exception e) {
       e.printStackTrace();
     }
+  }
+  
+  @Override
+  public void markMessagesAsRead(Integer chatId, Integer userId) throws ChatException, UserException {
+    User user = userService.findUserById(userId);
+    Chat chat = chatRepository.findById(chatId)
+        .orElseThrow(() -> new ChatException("Chat not found with id " + chatId));
+
+    if (!chat.getUsers().contains(user)) {
+      throw new ChatException("User is not a member of the chat.");
+    }
+
+    List<Message> unreadMessages = messageRepository.findByChatIdAndIsReadFalse(chatId);
+
+    for (Message message : unreadMessages) {
+      if (!message.getUser().getId().equals(userId)){
+        message.setRead(true);
+        messageRepository.save(message);
+      }
+    }
+
+    unreadCountService.resetUnreadCount(user, chat);
+  }
+
+  @Override
+  public Integer countUnreadMessages(Integer userId, Integer chatId) throws UserException, ChatException {
+    User user = userService.findUserById(userId);
+    Chat chat = chatRepository.findById(chatId)
+        .orElseThrow(() -> new ChatException("Chat not found with id " + chatId));
+
+    if (!chat.getUsers().stream().anyMatch(u -> u.getId().equals(userId))) {
+      throw new ChatException("User is not a member of the chat.");
+    }
+
+    return unreadCountService.getUnreadCount(user, chat);
   }
 }

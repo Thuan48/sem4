@@ -7,11 +7,14 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.github.javafaker.Faker;
 
+import sem4.proj4.entity.Blog;
 import sem4.proj4.entity.User;
 import sem4.proj4.service.FriendService;
+import sem4.proj4.repository.BlogRepository;
 import sem4.proj4.repository.UserRepository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Locale;
 
 @Configuration
@@ -22,6 +25,9 @@ public class DataInitializer implements CommandLineRunner {
 
   @Autowired
   private FriendService friendService;
+
+  @Autowired
+  private BlogRepository blogRepository;
 
   @Autowired
   private PasswordEncoder passwordEncoder;
@@ -58,5 +64,24 @@ public class DataInitializer implements CommandLineRunner {
     //     }
     //   }
     // }
-  }
+
+// for (int j = 1; j <= 100; j++) {
+//             final int userId = j;
+//             User user = userRepository.findById(userId)
+//                     .orElseThrow(() -> new RuntimeException("User not found with ID: " + userId));
+
+//             Blog blog = new Blog();
+//             blog.setTitle(faker.book().title());
+//             blog.setContent(faker.lorem().paragraph(5)); 
+//             blog.setCreateTime(LocalDateTime.now());
+//             blog.setUpdateTime(LocalDateTime.now());
+//             blog.setUser(user);
+//             blog.setImage(null); 
+
+//             blogRepository.save(blog);
+
+//             System.out.println("Created Blog ID: " + blog.getId() + " for User ID: " + user.getId());
+//         }
+// }
+}
 }

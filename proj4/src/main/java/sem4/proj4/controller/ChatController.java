@@ -119,10 +119,10 @@ public class ChatController {
   }
 
   @GetMapping("/getChats")
-  public List<ChatDto> getChats(@RequestHeader("Authorization") String jwt) throws ChatException, UserException {
+  public ResponseEntity<List<ChatDto>> getChats(@RequestHeader("Authorization") String jwt) throws ChatException, UserException {
     User reqUser = userService.findUserProfile(jwt);
-
-    return chatService.getChatsWithLastMessage(reqUser.getId());
+    List<ChatDto> chatDtos = chatService.getChatsWithLastMessage(reqUser.getId());
+    return new ResponseEntity<>(chatDtos, HttpStatus.OK);
   }
 
   @GetMapping("/{chatId}/members")
@@ -133,5 +133,35 @@ public class ChatController {
     List<User> members = chatService.getChatMembers(chatId);
 
     return new ResponseEntity<>(members, HttpStatus.OK);
+  }
+
+  @PostMapping("/mark-as-read")
+  public ResponseEntity<ApiResponse> markAsRead(
+      @RequestParam("chatId") Integer chatId,
+      @RequestParam("userId") Integer userId,
+      @RequestHeader("Authorization") String jwt) {
+    try {
+      userService.findUserProfile(jwt);
+      chatService.markMessagesAsRead(chatId, userId);
+      ApiResponse response = new ApiResponse("Unread count reset successfully.", false);
+      return new ResponseEntity<>(response, HttpStatus.OK);
+    } catch (UserException | ChatException e) {
+      ApiResponse response = new ApiResponse(e.getMessage(), true);
+      return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  @GetMapping("/unread-count")
+  public ResponseEntity<Integer> getUnreadMessagesCount(
+      @RequestParam Integer userId,
+      @RequestParam Integer chatId,
+      @RequestHeader("Authorization") String jwt) {
+    try {
+      userService.findUserProfile(jwt);
+      Integer count = chatService.countUnreadMessages(userId, chatId);
+      return new ResponseEntity<>(count, HttpStatus.OK);
+    } catch (UserException | ChatException e) {
+      return new ResponseEntity<>(0, HttpStatus.BAD_REQUEST);
+    }
   }
 }

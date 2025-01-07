@@ -5,9 +5,11 @@ import { ArrowLeft } from 'lucide-react';
 import provinces from './Data/vnProvinces.json';
 import districts from './Data/vnDistricts.json';
 import wards from './Data/vnWards.json';
+import { useNavigate } from 'react-router-dom';
 
 const UserProfileCard = ({ handleNavigate }) => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const user = useSelector((store) => store.auth.reqUser);
   const token = localStorage.getItem('token');
   const [isEditing, setIsEditing] = useState(false);
@@ -43,7 +45,7 @@ const UserProfileCard = ({ handleNavigate }) => {
       });
       //console.log('User data updated:', user);
     }
-    
+
   }, [user]);
 
   useEffect(() => {
@@ -305,6 +307,12 @@ const UserProfileCard = ({ handleNavigate }) => {
           </div>
 
           <div className="mt-8 flex justify-end space-x-2">
+            <button
+              className="px-4 py-2 bg-teal-500 text-white rounded-full hover:bg-teal-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
+              onClick={() => navigate("/change-password")}
+            >
+              Change Password
+            </button>
             {isEditing ? (
               <>
                 <button

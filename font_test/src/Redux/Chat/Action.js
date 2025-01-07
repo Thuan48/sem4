@@ -1,6 +1,6 @@
 import { BASE_API_URL } from "../../config/api";
 import { sendNotification } from "../Notification/Action";
-import { ADD_USERS_GROUP, CREATE_CHAT, CREATE_GROUP, DELETE_CHAT, GET_CHAT, GET_CHAT_MEMBERS, GET_USERS_CHAT, REMOVE_USERS_GROUP } from "./ActionType";
+import { ADD_USERS_GROUP, CREATE_CHAT, CREATE_GROUP, DELETE_CHAT, GET_CHAT, GET_CHAT_ERROR, GET_CHAT_MEMBERS, GET_USERS_CHAT, REMOVE_USERS_GROUP, MARK_AS_READ_SUCCESS } from "./ActionType";
 
 export const createChat = (chatData) => async (dispatch) => {
   try {
@@ -68,19 +68,25 @@ export const getChats = (token) => async (dispatch) => {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token.token}`,
+        Authorization: `Bearer ${token}`,
       },
     });
+    if (!res.ok) {
+      throw new Error(`Server Error: ${res.status}`);
+    }
     const resData = await res.json();
+    if (!Array.isArray(resData)) {
+      throw new TypeError("Expected an array of chats");
+    }
     const sortedChats = resData.sort((a, b) => {
       if (b.unreadCount > a.unreadCount) return 1;
       if (b.unreadCount < a.unreadCount) return -1;
       return new Date(b.lastMessageTimestamp) - new Date(a.lastMessageTimestamp);
     });
-    //console.log("sortedChats", sortedChats);
     dispatch({ type: GET_CHAT, payload: sortedChats });
   } catch (error) {
-    console.log("catch error:", error);
+    console.error("catch error:", error);
+    dispatch({ type: GET_CHAT_ERROR, payload: error.message });
   }
 }
 
@@ -151,3 +157,4 @@ export const getChatMembers = (chatId, token) => async (dispatch) => {
     throw error;
   }
 };
+

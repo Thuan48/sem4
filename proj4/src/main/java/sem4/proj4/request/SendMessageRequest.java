@@ -14,4 +14,5 @@ public class SendMessageRequest {
   private Integer chatId;
   private String content;
   private MultipartFile image;
+  private MultipartFile audio;
 }

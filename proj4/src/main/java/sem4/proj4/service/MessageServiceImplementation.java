@@ -34,6 +34,8 @@ public class MessageServiceImplementation implements MessageService {
   UserService userService;
   @Autowired
   ChatService chatService;
+  @Autowired
+  UnreadCountService unreadCountService;
   @Value("${config-upload-dir}")
   private String uploadDir;
 
@@ -64,8 +66,33 @@ public class MessageServiceImplementation implements MessageService {
         throw new ChatException("Error while uploading message image: " + e.getMessage());
       }
     }
+    if (req.getAudio() != null && !req.getAudio().isEmpty()) {
+      try {
+        Path path = Paths.get(uploadDir + "/messages/audios");
+        if (!Files.exists(path)) {
+          Files.createDirectories(path);
+        }
+        String filename = System.currentTimeMillis() + "_" + req.getAudio().getOriginalFilename();
+        Path filePath = path.resolve(filename);
+
+        Files.copy(req.getAudio().getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
+        message.setAudioUrl("/uploads/messages/audios/" + filename); 
+
+      } catch (Exception e) {
+        e.printStackTrace();
+        throw new ChatException("Error while uploading message audio: " + e.getMessage());
+      }
+    }
+    message.setRead(false);
 
     messageRepository.save(message);
+
+    for (User member : chat.getUsers()) {
+      if (!member.getId().equals(user.getId())) {
+        unreadCountService.incrementUnreadCount(member, chat);
+      }
+    }
 
     return message;
   }
@@ -102,6 +129,53 @@ public class MessageServiceImplementation implements MessageService {
     } else {
       throw new UserException("You cannot delete another user's message");
     }
+  }
+
+  @Override
+  public void markMessagesAsRead(Integer chatId, Integer userId) throws ChatException, UserException {
+    Chat chat = chatService.findChatById(chatId);
+    User user = userService.findUserById(userId);
+
+    if (!chat.getUsers().contains(user)) {
+      throw new ChatException("User is not a member of this chat.");
+    }
+
+    List<Message> unreadMessages = messageRepository.findByChatIdAndUserIdAndIsReadFalse(chatId, userId);
+    for (Message message : unreadMessages) {
+      message.setRead(true);
+      messageRepository.save(message);
+    }
+
+    unreadCountService.resetUnreadCount(user, chat);
+  }
+
+  @Override
+  public void togglePinMessage(Integer messageId, Integer userId) throws ChatException, UserException {
+    Message message = messageRepository.findById(messageId)
+        .orElseThrow(() -> new ChatException("Message not found with id: " + messageId));
+
+    User user = userService.findUserById(userId);
+    Chat chat = message.getChat();
+
+    if (!chat.getUsers().contains(user)) {
+      throw new ChatException("User is not a member of this chat.");
+    }
+
+    message.setPinned(!message.isPinned());
+    messageRepository.save(message);
+  }
+
+  @Override
+  public Message getLatestPinnedMessage(Integer chatId) throws ChatException, UserException {
+    chatService.findChatById(chatId);
+
+    List<Message> pinnedMessages = messageRepository.findByChatIdAndIsPinnedTrue(chatId);
+    if (pinnedMessages.isEmpty()) {
+      return null;
+    }
+
+    pinnedMessages.sort((m1, m2) -> m2.getTimestamp().compareTo(m1.getTimestamp()));
+    return pinnedMessages.get(0);
   }
   
 }

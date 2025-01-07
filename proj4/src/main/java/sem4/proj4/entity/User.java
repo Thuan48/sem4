@@ -6,6 +6,7 @@ import java.util.Set;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -48,9 +49,9 @@ public class User {
   private String password;
   @Column
   private boolean isEmailConfirmed;
-  @OneToMany(mappedBy = "userInitiator")
+  @OneToMany(mappedBy = "userInitiator", cascade = CascadeType.ALL, orphanRemoval = true)
   private Set<Friendship> sentFriendships = new HashSet<>();
 
-  @OneToMany(mappedBy = "userRecipient")
+  @OneToMany(mappedBy = "userRecipient", cascade = CascadeType.ALL, orphanRemoval = true)
   private Set<Friendship> receivedFriendships = new HashSet<>();
 }

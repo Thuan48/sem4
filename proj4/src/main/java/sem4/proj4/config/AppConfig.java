@@ -24,6 +24,7 @@ public class AppConfig {
   public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
     http
         .authorizeHttpRequests(authorize -> authorize
+            .requestMatchers("/api/users/forgot-password", "/api/users/reset-password").permitAll()
             .requestMatchers("/api/**").authenticated()
             .anyRequest().permitAll())
         .addFilterBefore(new JwtTokenValidator(), BasicAuthenticationFilter.class)
@@ -42,7 +43,9 @@ public class AppConfig {
     cfg.setAllowedOrigins(
         Arrays.asList(
             "http://localhost:5173", "http://127.0.0.1:5173",
-            "http://localhost:60013", "http://127.0.0.1:60013"));
+            "http://localhost:53317", "http://127.0.0.1:53317",
+            "http://10.0.2.2:5554", "http://localhost:5554",
+            "http://172.16.1.98:5554"));
     cfg.setAllowedMethods(Collections.singletonList("*"));
     cfg.setAllowCredentials(true);
     cfg.setAllowedHeaders(Collections.singletonList("*"));

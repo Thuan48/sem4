@@ -32,8 +32,12 @@ public class Message {
   @Column
   private String imageUrl;
   @Column
+  private String audioUrl;
+  @Column
   @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
   private LocalDateTime timestamp;
+  @Column(nullable = false)
+  private boolean isRead;
 
   @ManyToOne
   @JoinColumn(name = "user_id")
@@ -43,11 +47,33 @@ public class Message {
   @JoinColumn(name = "chat_id")
   private Chat chat;
 
-  public Message(String content,String imageUrl, User user, Chat chat) {
+  @Column
+  private boolean isPinned;
+
+  @ManyToOne
+  @JoinColumn(name = "poll_id")
+  private Poll poll;
+
+  public Message(String content, String imageUrl, String audioUrl, User user, Chat chat) {
     this.content = content;
     this.imageUrl = imageUrl;
+    this.audioUrl = audioUrl;
     this.user = user;
     this.chat = chat;
     this.timestamp = LocalDateTime.now();
+    this.isRead = false;
+    this.isPinned = false;
+  }
+
+  public Message(String content, String imageUrl, String audioUrl, User user, Chat chat, Poll poll) {
+    this.content = content;
+    this.imageUrl = imageUrl;
+    this.audioUrl = audioUrl;
+    this.user = user;
+    this.chat = chat;
+    this.poll = poll;
+    this.timestamp = LocalDateTime.now();
+    this.isRead = false;
+    this.isPinned = false;
   }
 }

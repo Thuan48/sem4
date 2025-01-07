@@ -4,6 +4,7 @@ import java.util.List;
 
 import sem4.proj4.entity.User;
 import sem4.proj4.exception.UserException;
+import sem4.proj4.request.ChangePasswordRequest;
 import sem4.proj4.request.UpdateProfileRequest;
 import sem4.proj4.request.UpdateUserRequest;
 
@@ -22,4 +23,10 @@ public interface UserService {
   public List<User> findAll();
 
   public User updateProfile(Integer userId, UpdateProfileRequest req) throws UserException;
+
+  void initiatePasswordReset(String email) throws UserException;
+
+  void resetPassword(String email, String code, String newPassword) throws UserException;
+
+  void changePassword(Integer userId, ChangePasswordRequest request) throws UserException;
 }

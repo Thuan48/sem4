@@ -4,7 +4,8 @@ import {
   ACCEPT_FRIEND_REQUEST,
   REJECT_FRIEND_REQUEST, 
   REMOVE_FRIEND,
-  SEARCH_USER,
+  SEARCH_FRIEND,
+  SEARCH_USERS_TO_ADD, 
   FRIENDS_LOADING,
   FRIENDS_ERROR,
   ADD_FRIEND_PENDING,
@@ -18,7 +19,9 @@ const initialState = {
   loading: false,
   error: null,
   searchUser: [],
+  searchFriend: [],
   pendingFriendRequests: [],
+  searchUsersToAdd: [],
 };
 
 export const friendsReducer = (state = initialState, action) => {
@@ -35,8 +38,11 @@ export const friendsReducer = (state = initialState, action) => {
     case GET_FRIENDS:
       return { ...state, friendsList: action.payload, loading: false };
 
-    case SEARCH_USER:
-      return { ...state, searchUser: action.payload, loading: false };
+    case SEARCH_USERS_TO_ADD:
+      return { ...state, searchUsersToAdd: action.payload, loading: false }; 
+
+    case SEARCH_FRIEND:
+      return { ...state, searchFriend: action.payload, loading: false };
 
     case ADD_FRIEND_PENDING:
       return {

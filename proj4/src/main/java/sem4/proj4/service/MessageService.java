@@ -20,4 +20,9 @@ public interface MessageService {
 
   public Message deleteMessage(Integer messageId, User reqUser) throws MessageException, UserException;
 
+  void markMessagesAsRead(Integer chatId, Integer userId) throws ChatException, UserException;
+
+  void togglePinMessage(Integer messageId, Integer userId) throws ChatException, UserException;
+
+  Message getLatestPinnedMessage(Integer chatId) throws ChatException, UserException;
 }

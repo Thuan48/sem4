@@ -36,7 +36,7 @@ public class Chat {
   @Column
   private String chat_image;
 
-  @ManyToMany
+  @ManyToMany(cascade = { CascadeType.PERSIST, CascadeType.MERGE, CascadeType.REMOVE })
   private Set<User> admin = new HashSet<>();
 
   @Column(name = "is_group")
@@ -46,7 +46,7 @@ public class Chat {
   @ManyToOne
   private User createdBy;
 
-  @ManyToMany
+  @ManyToMany(cascade = { CascadeType.PERSIST, CascadeType.MERGE, CascadeType.REMOVE })
   private Set<User> users = new HashSet<>();
 
   @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)

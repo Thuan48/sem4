@@ -1,12 +1,17 @@
 import React, { useState } from 'react';
 import { BsThreeDotsVertical } from 'react-icons/bs';
 import { Menu, MenuItem } from '@mui/material';
+import { togglePinMessage } from '../../Redux/Message/Action';
+import { useDispatch } from 'react-redux';
 
-const MessageCard = ({ isReqUserMessage, content, imageUrl, userName, timestamp, onDelete, userId, currentUserId }) => {
+const MessageCard = ({ isReqUserMessage, onDelete, userId, message, currentUserId }) => {
+  const { id, isPinned, audioUrl, content, imageUrl, userName, timestamp } = message;
   const formattedTime = new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
+  const dispatch = useDispatch();
+  const token = localStorage.getItem("token");
 
   const handleClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -18,6 +23,11 @@ const MessageCard = ({ isReqUserMessage, content, imageUrl, userName, timestamp,
 
   const handleDelete = () => {
     onDelete();
+    handleClose();
+  };
+
+  const handleTogglePin = () => {
+    dispatch(togglePinMessage(id, token));
     handleClose();
   };
 
@@ -45,6 +55,11 @@ const MessageCard = ({ isReqUserMessage, content, imageUrl, userName, timestamp,
           </>
         )}
       </div>
+      {isPinned && (
+        <div className="mt-1 mb-1">
+          <span className="text-xs text-yellow-500 font-semibold">📌 Pinned Message</span>
+        </div>
+      )}
       <div className={`flex flex-col ${isReqUserMessage ? "items-end" : "items-start"}`}>
         {content && (
           <p className={`mt-0.5 text-sm ${isReqUserMessage ? "text-gray-900 dark:text-white" : "text-gray-700 dark:text-gray-300"} whitespace-pre-wrap break-words`}>
@@ -58,6 +73,9 @@ const MessageCard = ({ isReqUserMessage, content, imageUrl, userName, timestamp,
             className="mt-2 max-w-xs rounded-lg"
           />
         )}
+        {audioUrl && (
+          <audio controls src={`http://localhost:8080${audioUrl}`} className="mt-2" />
+        )}
         <span className={`mt-0.5 text-xs ${isReqUserMessage ? "text-gray-600 dark:text-teal-200" : "text-gray-500 dark:text-gray-400"}`}>{formattedTime}</span>
       </div>
       <Menu
@@ -67,6 +85,9 @@ const MessageCard = ({ isReqUserMessage, content, imageUrl, userName, timestamp,
         MenuListProps={{ 'aria-labelledby': 'basic-button' }}
       >
         <MenuItem onClick={handleDelete}>Delete</MenuItem>
+        <MenuItem onClick={handleTogglePin}>
+          {message.isPinned ? 'Unpin' : 'Pin'}
+        </MenuItem>
       </Menu>
     </div>
   );

@@ -1,17 +1,16 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { AiOutlineSearch, AiOutlineDelete } from "react-icons/ai"
-import { MdDynamicFeed, MdGroupAdd, MdOutlinePersonRemoveAlt1 } from "react-icons/md";
+import { MdGroupAdd, MdOutlinePersonRemoveAlt1 } from "react-icons/md";
 import { GrLogout } from "react-icons/gr";
 import { IoIosPersonAdd } from "react-icons/io";
-import { FaSignOutAlt, FaUserFriends } from "react-icons/fa";
-import { BsEmojiSmile, BsMicFill, BsThreeDotsVertical, BsSun, BsMoon, BsArrowUp } from "react-icons/bs"
+import { BsEmojiSmile, BsMicFill, BsStopFill, BsThreeDotsVertical, BsSun, BsMoon, BsArrowUp } from "react-icons/bs"
 import { ImAttachment, ImProfile } from "react-icons/im"
 import { useNavigate } from 'react-router-dom';
-import { IconButton, Menu, MenuItem, Snackbar, SnackbarContent } from '@mui/material';
+import { Button, IconButton, Menu, MenuItem, Snackbar, SnackbarContent } from '@mui/material';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout, currenUser, searchUser } from '../Redux/Auth/Action';
 import { addUserGroup, createChat, deleteChat, getChatMembers, getChats, removeUserGroup } from '../Redux/Chat/Action';
-import { createMessage, deleteMessage, getAllMessage } from '../Redux/Message/Action';
+import { createMessage, deleteMessage, fetchPinnedMessages, getAllMessage, markAsRead } from '../Redux/Message/Action';
 import SockJS from "sockjs-client/dist/sockjs";
 import { over } from "stompjs";
 import ChatCard from './ChatCard/ChatCard';
@@ -26,8 +25,11 @@ import UserProfileCard from './Profile/UserProfileCard';
 import UserCard from './Profile/UserCard';
 import { UPDATE_USER_PROFILE } from '../Redux/Auth/ActionType';
 import { BASE_API_URL } from '../config/api';
-import FriendCard from './Friends/FriendCard';
 import '../index.css';
+import { FaSignOutAlt, FaUserFriends, FaBlog } from "react-icons/fa";
+import PinnedMessages from './MessageCard/PinnedMessages';
+import PollsPage from './Poll/PollsPage';
+import CreatePollCard from './Poll/CreatePollCard';
 
 export const HomePage = () => {
   const [isConnect, setIsConnect] = useState(false);
@@ -56,8 +58,7 @@ export const HomePage = () => {
   const [userCardOpen, setUserCardOpen] = useState(false);
   const [selectedUserCardId, setSelectedUserCardId] = useState(null);
   const [anchorElSecondMenu, setAnchorElSecondMenu] = useState(null);
-  const [query, setQuery] = useState("");
-  const [isFriendCardOpen, setIsFriendCardOpen] = useState(false);
+  const [isCreatePollOpen, setIsCreatePollOpen] = useState(false);
 
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -68,10 +69,54 @@ export const HomePage = () => {
   const isAdmin = currentChat?.userAdminIds?.includes(auth.reqUser.id) || false;
   const pageSize = 7;
   const openSecondMenu = Boolean(anchorElSecondMenu);
-  const { friendsList, searchFriend, loading, error } = friends;
+  const [isRecording, setIsRecording] = useState(false);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const pinnedMessagesIntervalRef = useRef(null);
 
-  const toggleFriendCard = () => {
-    setIsFriendCardOpen(!isFriendCardOpen);
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = event => {
+        audioChunksRef.current.push(event.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/mp3' });
+        const audioFile = new File([audioBlob], `audio_${Date.now()}.mp3`, { type: 'audio/mp3' });
+
+        dispatch(createMessage({
+          userId: auth.reqUser.id,
+          chatId: currentChat.id,
+          content: '', 
+          audio: audioFile,
+          token: token,
+        }));
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+    } catch (err) {
+      console.error("Error accessing microphone:", err);
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+  const handleOpenCreatePollModal = () => {
+    setIsCreatePollOpen(true);
+    handleCloseSecondMenu(); 
+  };
+  const handleCloseCreatePollModal = () => {
+    setIsCreatePollOpen(false);
   };
   const handleCloseSecondMenu = () => {
     setAnchorElSecondMenu(null);
@@ -173,7 +218,7 @@ export const HomePage = () => {
     setUserProfile(false);
   }
   const handleCurrentChat = (item) => {
-    setCurrentChat(item)
+    setCurrentChat(item);
     setChatList((prevChats) => {
       return prevChats.map((chatItem) => {
         if (chatItem.id === item.id) {
@@ -190,8 +235,9 @@ export const HomePage = () => {
       stompClient.subscribe("/group/" + item.id.toString(), onMessageRevice);
       stompClient.subscribe("/group/" + item.id.toString() + "/delete", onDeleteMessageReceive);
     }
+    dispatch(markAsRead(item.id, auth.reqUser.id, token));
   };
-  const handleAddMember = () => {
+  const handleAddMember = (chatId) => {
     dispatch(addUserGroup({ chatId: currentChat.id, userId, token }))
       .then(() => {
         setSnackbarMessage(`User ${userId} added to the group.`);
@@ -204,7 +250,7 @@ export const HomePage = () => {
         setSnackbarOpen(true);
       });
   };
-  const handleOutGroup = () => {
+  const handleOutGroup = (chatId) => {
     if (currentChat) {
       const confirmed = window.confirm("Are you sure you want to leave this group?");
       if (confirmed) {
@@ -252,7 +298,9 @@ export const HomePage = () => {
     const confirmed = window.confirm("Are you sure you want to delete this chat?");
     if (confirmed) {
       dispatch(deleteChat({ chatId: currentChat.id, token }));
+      handleShowSnackbar("Remove chat successsuccess!");
       handleClose();
+      setCurrentChat(null);
     }
   };
   const createGroup = () => setIsGroup(true);
@@ -411,16 +459,20 @@ export const HomePage = () => {
     if (!auth.reqUser) navigate('/signin');
   }, [auth.reqUser, navigate]);
   useEffect(() => {
-    //dispatch(getUserChat({ token }));
-    const fetchChats = () => {
-    dispatch(getChats({ token }));
+    const fetchChats = async () => {
+      try {
+        await dispatch(getChats(token)); 
+      } catch (error) {
+        console.error("Failed to fetch chats:", error);
+        handleShowSnackbar("Failed to load chats. Please try again later.");
+      }
     };
     fetchChats();
-    const interval = setInterval(fetchChats, 500);
+    const interval = setInterval(fetchChats, 500); 
     return () => clearInterval(interval);
   }, [dispatch, token]);
-  useEffect(() => {
 
+  useEffect(() => {
     if (currentChat?.id) {
       dispatch(getAllMessage({ chatId: currentChat.id, token, pageSize, pageNumber: 0 }));
       setMessagePage(0);
@@ -428,10 +480,20 @@ export const HomePage = () => {
     }
   }, [currentChat, message.newMessage, dispatch, token]);
 
+  useEffect(() => {
+    if(currentChat?.id){
+      pinnedMessagesIntervalRef.current = setInterval(() => {
+        dispatch(fetchPinnedMessages(currentChat.id, token));
+      }, 1000);
+      return () => clearInterval(pinnedMessagesIntervalRef.current);
+    }
+  }, [currentChat, dispatch, token]);
+
   const handleLoadMessage = async () => {
     const nextPage = messagePage + 1;
     setMessagePage(nextPage);
     setLoadingMessages(true);
+    dispatch(markAsRead(currentChat.id, userId, token));
     const newMessages = await dispatch(getAllMessage({
       chatId: currentChat.id,
       token: token,
@@ -462,11 +524,6 @@ export const HomePage = () => {
               handleNavigate={() => setUserCardOpen(false)}
             />
           )}
-          {isFriendCardOpen && (
-            <div className="friend-card-modal">
-              <FriendCard handleNavigate={() => setIsFriendCardOpen(false)} />
-            </div>
-          )}
           
           {!isProfile && !isGroup && (
             <div className="flex flex-col h-full">
@@ -477,9 +534,13 @@ export const HomePage = () => {
                   <p className="font-semibold">{auth.reqUser?.full_name}</p>
                 </div>
                 <div className="flex space-x-4 text-2xl">
-                  <MdDynamicFeed
+                  <FaUserFriends
                     className="cursor-pointer hover:text-primary dark:hover:text-teal-400 transition-colors"
-                    onClick={() => navigate("/status")}
+                    onClick={() => navigate("/friends")}
+                  />
+                  <FaBlog
+                    className="cursor-pointer hover:text-primary dark:hover:text-teal-400 transition-colors"
+                    onClick={() => navigate("/blogs")}
                   />
                   <BsThreeDotsVertical
                     className="cursor-pointer hover:text-primary dark:hover:text-teal-400 transition-colors"
@@ -495,9 +556,6 @@ export const HomePage = () => {
                   <MenuItem onClick={handleNavigateProfile}>
                     <ImProfile />
                     Profile
-                  </MenuItem>
-                  <MenuItem onClick={toggleFriendCard}> 
-                    <FaUserFriends />Friends
                   </MenuItem>
                   <MenuItem onClick={handleLogout}>
                     <GrLogout />
@@ -559,11 +617,33 @@ export const HomePage = () => {
                         userImg={chatImage}
                         content={truncatedContent}
                         timestamp={lastMessageTimestamp}
-                        count={item.unreadCount || 0}
+                        count={item.unreadCount}
+                        isGroup={isGroupChat}
+                        isAdmin={item.userAdminIds?.includes(auth.reqUser.id) || false}
+                        onAddMember={openAddMember}
+                        onRemoveMember={handleOpenRemoveMemberModal}
+                        onOutGroup={handleOutGroup}
+                        onDeleteChat={handleDeleteGroup}
+                        onViewProfile={() => handleOpenUserCard(getOtherUserId())}
                       />
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          )}
+          {isCreatePollOpen && (
+            <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 w-11/12 max-w-md">
+                <CreatePollCard chatId={currentChat.id} />
+                <Button
+                  onClick={handleCloseCreatePollModal}
+                  variant="outlined"
+                  color="secondary"
+                  className="mt-4"
+                >
+                  Close
+                </Button>
               </div>
             </div>
           )}
@@ -620,6 +700,9 @@ export const HomePage = () => {
                           <MenuItem key="delete-group" onClick={handleDeleteGroup}>
                             <AiOutlineDelete />
                             Delete Chat
+                          </MenuItem>,
+                          <MenuItem key="create-poll" onClick={handleOpenCreatePollModal}>
+                            Create Poll
                           </MenuItem>
                         ),] : [
                         <MenuItem key="profile" onClick={() => handleOpenUserCard(getOtherUserId())}>
@@ -631,7 +714,6 @@ export const HomePage = () => {
                           Delete Chat
                         </MenuItem>,
                       ]}
-
                     </Menu>
                     <AddMemberModal
                       openAddMemberModal={openAddMemberModal}
@@ -653,6 +735,14 @@ export const HomePage = () => {
                 </div>
               </div>
               <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-gray-100 dark:bg-gray-800" onScroll={handleMessageScroll}>
+                {currentChat && currentChat.id && message.pinnedMessages[currentChat.id] && message.pinnedMessages[currentChat.id].length > 0 && (
+                  <PinnedMessages
+                    messages={message.pinnedMessages[currentChat.id]}
+                    currentUserId={auth.reqUser.id}
+                    onDelete={handleDeleteMessage}
+                  />
+                )}
+                <PollsPage chatId={currentChat.id} />  
                 <div className="flex justify-center">
                   <button onClick={handleLoadMessage} className="flex items-center justify-center w-[3.8vw] p-2 bg-gray-200 dark:bg-gray-700 rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
                     <BsArrowUp className="text-xl text-gray-700 dark:text-gray-300" />
@@ -662,10 +752,7 @@ export const HomePage = () => {
                   <div key={msg.id} className={`flex ${msg.user.id !== auth.reqUser.id ? 'justify-start' : 'justify-end'}`}>
                     <MessageCard
                       isReqUserMessage={msg.user.id !== auth.reqUser.id}
-                      content={msg.content}
-                      imageUrl={msg.imageUrl}
-                      userName={msg.user.full_name}
-                      timestamp={msg.timestamp}
+                      message={msg}
                       onDelete={() => handleDeleteMessage(msg.id)}
                       userId={msg.user.id}
                       currentUserId={auth.reqUser.id}
@@ -706,7 +793,17 @@ export const HomePage = () => {
                     style={{ display: 'none' }}
                     onChange={(e) => setImage(e.target.files[0])}
                   />
-                  <BsMicFill className="text-gray-500 dark:text-gray-400 mx-3 cursor-pointer hover:text-teal-500 dark:hover:text-teal-400 transition-colors" />
+                  {isRecording ? (
+                    <BsStopFill
+                      className="text-1xl text-red-500 cursor-pointer mx-3 hover:text-red-600 transition-colors"
+                      onClick={stopRecording}
+                    />
+                  ) : (
+                    <BsMicFill
+                      className="text-1xl text-gray-500 dark:text-gray-400 mx-3 cursor-pointer hover:text-teal-500 dark:hover:text-teal-400 transition-colors"
+                      onClick={startRecording}
+                    />
+                  )}
                 </div>
               </div>
             </>
@@ -758,4 +855,4 @@ export const HomePage = () => {
       </Snackbar>
     </div>
   );
-};  
+};

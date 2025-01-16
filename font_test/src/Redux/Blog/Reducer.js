@@ -21,13 +21,14 @@ const blogReducer = (state = initialState, action) => {
                 ...state,
                 loading: true,
             };
-        case 'FETCH_BLOGS_SUCCESS':
+        case FETCH_BLOGS_SUCCESS:
             return {
                 ...state,
                 loading: false,
-                data: action.payload.blogs,  // Don't append, just store current page data
+                data: action.payload.blogs, // Ensure 'blogs' contains 'images'
                 totalPages: action.payload.totalPages,
                 currentPage: action.payload.currentPage,
+                hasMore: action.payload.hasMore,
                 error: null
             };
         case FETCH_BLOGS_FAILURE:
@@ -39,19 +40,18 @@ const blogReducer = (state = initialState, action) => {
         case CREATE_BLOG:
             return {
                 ...state,
-                data: [...state.data, action.payload]
+                data: [action.payload, ...state.data], // 'action.payload' should include 'images'
+                loading: false,
+                error: null
             };
         case UPDATE_BLOG:
-            return {
-                ...state,
-                data: state.data.map(blog =>
-                    blog.id === action.payload.id ? action.payload : blog
-                )
-            };
+            // ...existing code...
+            return state;
         case DELETE_BLOG:
             return {
                 ...state,
-                data: state.data.filter(blog => blog.id !== action.payload.id)
+                data: state.data.filter(blog => blog.id !== action.payload.blogId), // Corrected payload access
+                error: action.payload.error || null,
             };
         default:
             return state;

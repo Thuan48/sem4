@@ -41,4 +41,9 @@ public interface MessageRepository extends JpaRepository<Message, Integer> {
 
   @Query("SELECT m FROM Message m WHERE m.chat.id = :chatId AND m.isPinned = true ORDER BY m.timestamp DESC")
   List<Message> findByChatIdAndIsPinnedTrue(@Param("chatId") Integer chatId);
+
+  @Query("SELECT m FROM Message m WHERE m.chat.id = :chatId AND LOWER(m.content) LIKE LOWER(CONCAT('%', :keyword, '%')) ORDER BY m.timestamp DESC")
+  Page<Message> searchByChatIdAndContentContaining(@Param("chatId") Integer chatId, @Param("keyword") String keyword,
+      Pageable pageable);
+
 }

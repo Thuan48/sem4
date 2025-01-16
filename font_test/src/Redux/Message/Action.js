@@ -1,17 +1,17 @@
 import { BASE_API_URL } from "../../config/api";
 import { MARK_AS_READ_SUCCESS } from "../Chat/ActionType";
-import { CREATE_NEW_MESSAGE, DELETE_MESSAGE, FETCH_PINNED_MESSAGES_FAILURE, FETCH_PINNED_MESSAGES_SUCCESS, GET_ALL_MESSAGE, GET_UNREAD_COUNT, TOGGLE_PIN_FAILURE, TOGGLE_PIN_SUCCESS } from "./ActionType";
+import { ADD_INTERACTION_FAILURE, ADD_INTERACTION_REQUEST, ADD_INTERACTION_SUCCESS, CREATE_NEW_MESSAGE, DELETE_MESSAGE, FETCH_PINNED_MESSAGES_FAILURE, FETCH_PINNED_MESSAGES_SUCCESS, GET_ALL_MESSAGE, GET_UNREAD_COUNT, REMOVE_INTERACTION_FAILURE, REMOVE_INTERACTION_REQUEST, REMOVE_INTERACTION_SUCCESS, SEARCH_MESSAGES_FAILURE, SEARCH_MESSAGES_SUCCESS, TOGGLE_PIN_FAILURE, TOGGLE_PIN_SUCCESS } from "./ActionType";
 
 export const createMessage = (messageData) => async (dispatch) => {
   try {
     const formData = new FormData();
     formData.append('userId', messageData.userId);
     formData.append('chatId', messageData.chatId);
-    formData.append('content', messageData.content||'');
+    formData.append('content', messageData.content || '');
     if (messageData.image) {
       formData.append('image', messageData.image);
     }
-    if (messageData.audio) { 
+    if (messageData.audio) {
       formData.append('audio', messageData.audio);
     }
     const res = await fetch(`${BASE_API_URL}/api/messages/create`, {
@@ -35,7 +35,7 @@ export const getAllMessage = (reqData) => async (dispatch) => {
   try {
     const { chatId, token, pageSize = 7, pageNumber = 0 } = reqData;
     const res = await fetch(`${BASE_API_URL}/api/messages/chat/${chatId}?pageSize=${pageSize}&pageNumber=${pageNumber}`, {
-       method:"GET",
+      method: "GET",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
@@ -43,7 +43,7 @@ export const getAllMessage = (reqData) => async (dispatch) => {
     })
     const data = await res.json();
     dispatch({ type: GET_ALL_MESSAGE, payload: data });
-    return data; 
+    return data;
   } catch (error) {
     console.log("catch error:", error);
   }
@@ -145,5 +145,71 @@ export const fetchPinnedMessages = (chatId, token) => async (dispatch) => {
     }
   } catch (error) {
     dispatch({ type: FETCH_PINNED_MESSAGES_FAILURE, payload: error.message });
+  }
+};
+
+export const searchMessages = (chatId, keyword, token, pageSize = 10, pageNumber = 0) => async (dispatch) => {
+  try {
+    const encodedKeyword = encodeURIComponent(keyword.trim());
+    const response = await fetch(`${BASE_API_URL}/api/messages/search?chatId=${chatId}&keyword=${encodedKeyword}&pageSize=${pageSize}&pageNumber=${pageNumber}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      dispatch({ type: SEARCH_MESSAGES_SUCCESS, payload: data });
+      return data;
+    } else {
+      const errorData = await response.json();
+      dispatch({ type: SEARCH_MESSAGES_FAILURE, payload: errorData.message });
+      return null;
+    }
+  } catch (error) {
+    dispatch({ type: SEARCH_MESSAGES_FAILURE, payload: errorData.message || "Search failed. Please try again." });
+    return null;
+  }
+};
+
+export const addInteraction = (messageId, type, token) => async (dispatch) => {
+  dispatch({ type: ADD_INTERACTION_REQUEST, payload: { messageId, type } });
+  try {
+    const res = await fetch(`${BASE_API_URL}/api/messages/${messageId}/interact?type=${type}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const data = await res.json();
+    if (res.ok) {
+      dispatch({ type: ADD_INTERACTION_SUCCESS, payload: { messageId, interaction: data } });
+    } else {
+      dispatch({ type: ADD_INTERACTION_FAILURE, payload: data.message || 'Failed to add interaction.' });
+    }
+  } catch (error) {
+    dispatch({ type: ADD_INTERACTION_FAILURE, payload: error.message });
+  }
+};
+
+export const removeInteraction = (interactionId, token) => async (dispatch) => {
+  dispatch({ type: REMOVE_INTERACTION_REQUEST, payload: { interactionId } });
+  try {
+    const res = await fetch(`${BASE_API_URL}/api/messages/interact/${interactionId}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (res.ok) {
+      dispatch({ type: REMOVE_INTERACTION_SUCCESS, payload: { interactionId } });
+    } else {
+      const data = await res.json();
+      dispatch({ type: REMOVE_INTERACTION_FAILURE, payload: data.message || 'Failed to remove interaction.' });
+    }
+  } catch (error) {
+    dispatch({ type: REMOVE_INTERACTION_FAILURE, payload: error.message });
   }
 };

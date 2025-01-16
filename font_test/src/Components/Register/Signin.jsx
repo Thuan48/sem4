@@ -23,7 +23,7 @@ const Signin = () => {
       if (response && response.jwt) {
         setNotificationType('success');
         setOpen(true);
-        navigate("/");
+        navigate("/blogs");
       } else {
         setNotificationType('error');
         setOpen(true);
@@ -52,7 +52,7 @@ const Signin = () => {
 
   useEffect(() => {
     if (auth.reqUser?.full_name) {
-      navigate('/');
+      navigate('/blogs');
     }
   }, [auth.reqUser, navigate]);
 

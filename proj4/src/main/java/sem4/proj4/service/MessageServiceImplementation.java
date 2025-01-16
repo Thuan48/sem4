@@ -17,12 +17,17 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import sem4.proj4.entity.Chat;
+import sem4.proj4.entity.Interaction;
 import sem4.proj4.entity.Message;
 import sem4.proj4.entity.User;
+import sem4.proj4.entity.UserChatStatus;
+import sem4.proj4.entity.UserChatStatus.Status;
 import sem4.proj4.exception.ChatException;
 import sem4.proj4.exception.MessageException;
 import sem4.proj4.exception.UserException;
+import sem4.proj4.repository.InteractionRepository;
 import sem4.proj4.repository.MessageRepository;
+import sem4.proj4.repository.UserChatStatusRepository;
 import sem4.proj4.request.SendMessageRequest;
 
 @Service
@@ -30,6 +35,10 @@ public class MessageServiceImplementation implements MessageService {
 
   @Autowired
   MessageRepository messageRepository;
+  @Autowired
+  InteractionRepository interactionRepository;
+  @Autowired
+  UserChatStatusRepository userChatStatusRepository;
   @Autowired
   UserService userService;
   @Autowired
@@ -43,6 +52,18 @@ public class MessageServiceImplementation implements MessageService {
   public Message sendMessage(SendMessageRequest req) throws UserException, ChatException {
     User user = userService.findUserById(req.getUserId());
     Chat chat = chatService.findChatById(req.getChatId());
+
+    if (!chat.getUsers().contains(user)) {
+      throw new UserException("You are not a member of this chat.");
+    }
+
+    Optional<UserChatStatus> optionalStatus = userChatStatusRepository.findByUserAndChat(user, chat);
+        if (optionalStatus.isPresent()) {
+            UserChatStatus status = optionalStatus.get();
+            if (status.getStatus() == Status.BLOCKED) {
+                throw new ChatException("You are blocked from sending messages in this chat.");
+            }
+        }
 
     Message message = new Message();
     message.setChat(chat);
@@ -90,7 +111,15 @@ public class MessageServiceImplementation implements MessageService {
 
     for (User member : chat.getUsers()) {
       if (!member.getId().equals(user.getId())) {
-        unreadCountService.incrementUnreadCount(member, chat);
+        Optional<UserChatStatus> memberStatusOpt = userChatStatusRepository.findByUserAndChat(member, chat);
+        if (memberStatusOpt.isPresent()) {
+          UserChatStatus memberStatus = memberStatusOpt.get();
+          if (memberStatus.getStatus() != Status.MUTED) {
+            unreadCountService.incrementUnreadCount(member, chat);
+          }
+        } else {
+          unreadCountService.incrementUnreadCount(member, chat);
+        }
       }
     }
 
@@ -177,5 +206,52 @@ public class MessageServiceImplementation implements MessageService {
     pinnedMessages.sort((m1, m2) -> m2.getTimestamp().compareTo(m1.getTimestamp()));
     return pinnedMessages.get(0);
   }
+
+  @Override
+  public List<Message> searchMessages(Integer chatId, String keyword, int pageSize, int pageNumber)
+      throws UserException, ChatException {
+    chatService.findChatById(chatId);
+
+    Pageable pageable = PageRequest.of(pageNumber, pageSize, Sort.by("timestamp").descending());
+    Page<Message> messagePage = messageRepository.searchByChatIdAndContentContaining(chatId, keyword, pageable);
+    return messagePage.getContent();
+  }
   
+  @Override
+  public List<Message> getPinnedMessages(Integer chatId) throws ChatException, UserException {
+    chatService.findChatById(chatId);
+
+    return messageRepository.findByChatIdAndIsPinnedTrue(chatId);
+  }
+
+  @Override
+  public Interaction addInteraction(Integer messageId, Integer userId, String type) throws MessageException, UserException, ChatException {
+      Message message = findMessageById(messageId);
+      User user = userService.findUserById(userId);
+      
+      if (!message.getChat().getUsers().contains(user)) {
+          throw new UserException("You are not a member of this chat.");
+      }
+      
+      Interaction interaction = new Interaction();
+      interaction.setMessage(message);
+      interaction.setUser(user);
+      interaction.setType(type);
+      
+      return interactionRepository.save(interaction);
+  }
+
+  @Override
+  public void removeInteraction(Integer interactionId, Integer userId) throws MessageException, UserException, ChatException {
+      Optional<Interaction> interactionOpt = interactionRepository.findById(interactionId);
+      if (interactionOpt.isPresent()) {
+          Interaction interaction = interactionOpt.get();
+          if (!interaction.getUser().getId().equals(userId)) {
+              throw new UserException("You can only remove your own interactions.");
+          }
+          interactionRepository.delete(interaction);
+      } else {
+          throw new MessageException("Interaction not found.");
+      }
+  }
 }

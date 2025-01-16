@@ -20,10 +20,12 @@ import org.springframework.stereotype.Service;
 import sem4.proj4.entity.Chat;
 import sem4.proj4.entity.Message;
 import sem4.proj4.entity.User;
+import sem4.proj4.entity.UserChatStatus;
 import sem4.proj4.exception.ChatException;
 import sem4.proj4.exception.UserException;
 import sem4.proj4.repository.ChatRepository;
 import sem4.proj4.repository.MessageRepository;
+import sem4.proj4.repository.UserChatStatusRepository;
 import sem4.proj4.request.ChatDto;
 import sem4.proj4.request.GroupChatRequest;
 import sem4.proj4.request.UserDto;
@@ -35,6 +37,8 @@ public class ChatServiceImplement implements ChatService {
   ChatRepository chatRepository;
   @Autowired
   MessageRepository messageRepository;
+  @Autowired
+  UserChatStatusRepository userChatStatusRepository;
   @Autowired
   private SimpMessagingTemplate simpMessagingTemplate;
   @Autowired
@@ -63,6 +67,7 @@ public class ChatServiceImplement implements ChatService {
     chat.setGroup(false);
 
     Chat savedChat = chatRepository.save(chat);
+    initializeUserChatStatus(savedChat, chat.getUsers());
     updateChatListForUsers(savedChat);
     return savedChat;
   }
@@ -115,8 +120,21 @@ public class ChatServiceImplement implements ChatService {
     }
 
     Chat savedChat = chatRepository.save(group);
+
+    initializeUserChatStatus(savedChat, group.getUsers());
     updateChatListForUsers(savedChat);
     return savedChat;
+  }
+
+  private void initializeUserChatStatus(Chat chat, Set<User> users) {
+    for (User user : users) {
+      UserChatStatus status = new UserChatStatus();
+      status.setChat(chat);
+      status.setUser(user);
+      status.setStatus(UserChatStatus.Status.DEFAULT);
+
+      userChatStatusRepository.save(status);
+    }
   }
 
   @Override
@@ -128,7 +146,15 @@ public class ChatServiceImplement implements ChatService {
       Chat chat = opt.get();
       if (chat.getAdmin().contains(reqUser)) {
         chat.getUsers().add(user);
-        return chatRepository.save(chat);
+        chatRepository.save(chat);
+
+        UserChatStatus status = new UserChatStatus();
+        status.setChat(chat);
+        status.setUser(user);
+        status.setStatus(UserChatStatus.Status.DEFAULT);
+        userChatStatusRepository.save(status);
+
+        return chat;
       } else {
         throw new UserException("You not admin of group");
       }
@@ -194,7 +220,7 @@ public class ChatServiceImplement implements ChatService {
     User userss = userService.findUserById(userId);
     List<ChatDto> chatDtos = new ArrayList<>();
     List<Integer> chatIds = chats.stream().map(Chat::getId).collect(Collectors.toList());
-    
+
     List<Object[]> unreadCounts = messageRepository.countUnreadMessagesPerChat(userId, chatIds);
     Map<Integer, Integer> unreadCountMap = new HashMap<>();
     for (Object[] obj : unreadCounts) {
@@ -212,12 +238,12 @@ public class ChatServiceImplement implements ChatService {
       chatDto.setGroup(chat.isGroup());
       chatDto.setLastMessageContent(lastMessage != null ? lastMessage.getContent() : null);
       chatDto.setLastMessageTimestamp(lastMessage != null ? lastMessage.getTimestamp() : null);
-      
+
       List<UserDto> userDtos = chat.getUsers().stream()
-            .map(user -> new UserDto(user.getId(), user.getFull_name(), user.getProfile_picture()))
-            .collect(Collectors.toList());
-        chatDto.setUsers(userDtos);
-      
+          .map(user -> new UserDto(user.getId(), user.getFull_name(), user.getProfile_picture()))
+          .collect(Collectors.toList());
+      chatDto.setUsers(userDtos);
+
       if (chat.isGroup()) {
         List<Integer> adminIds = chat.getAdmin().stream()
             .map(User::getId)
@@ -240,7 +266,7 @@ public class ChatServiceImplement implements ChatService {
       chatDto.setUnreadCount(unreadCount);
       chatDtos.add(chatDto);
     }
-    
+
     return chatDtos;
   }
 
@@ -254,7 +280,7 @@ public class ChatServiceImplement implements ChatService {
     Set<User> members = chat.getUsers();
     return new ArrayList<>(members);
   }
-  
+
   public void updateChatListForUsers(Chat chat) {
     try {
       for (User member : chat.getUsers()) {
@@ -265,7 +291,7 @@ public class ChatServiceImplement implements ChatService {
       e.printStackTrace();
     }
   }
-  
+
   @Override
   public void markMessagesAsRead(Integer chatId, Integer userId) throws ChatException, UserException {
     User user = userService.findUserById(userId);
@@ -279,7 +305,7 @@ public class ChatServiceImplement implements ChatService {
     List<Message> unreadMessages = messageRepository.findByChatIdAndIsReadFalse(chatId);
 
     for (Message message : unreadMessages) {
-      if (!message.getUser().getId().equals(userId)){
+      if (!message.getUser().getId().equals(userId)) {
         message.setRead(true);
         messageRepository.save(message);
       }
@@ -299,5 +325,137 @@ public class ChatServiceImplement implements ChatService {
     }
 
     return unreadCountService.getUnreadCount(user, chat);
+  }
+
+  @Override
+  public UserChatStatus updateUserChatStatus(Integer chatId, Integer userId, Integer blockerId, UserChatStatus.Status status)
+      throws ChatException, UserException {
+    User user = userService.findUserById(userId);
+    Chat chat = findChatById(chatId);
+
+    if (!chat.getUsers().contains(user)) {
+      throw new UserException("User is not a member of this chat.");
+    }
+
+    Optional<UserChatStatus> optionalStatus = userChatStatusRepository.findByUserAndChat(user, chat);
+    UserChatStatus userChatStatus;
+
+    if (optionalStatus.isPresent()) {
+      userChatStatus = optionalStatus.get();
+    } else {
+      userChatStatus = new UserChatStatus();
+      userChatStatus.setUser(user);
+      userChatStatus.setChat(chat);
+    }
+
+    userChatStatus.setStatus(status);
+
+    if (status == UserChatStatus.Status.BLOCKED) {
+      userChatStatus.setBlockedByUserId(blockerId); 
+    } else {
+      userChatStatus.setBlockedByUserId(null);
+    }
+
+    return userChatStatusRepository.save(userChatStatus);
+  }
+
+  @Override
+  public UserChatStatus getUserChatStatus(Integer chatId, Integer userId) throws ChatException, UserException {
+    User user = userService.findUserById(userId);
+    Chat chat = findChatById(chatId);
+
+    if (!chat.getUsers().contains(user)) {
+      throw new UserException("User is not a member of this chat.");
+    }
+
+    return userChatStatusRepository.findByUserAndChat(user, chat)
+        .orElse(new UserChatStatus(null, user, chat, UserChatStatus.Status.DEFAULT, null));
+  }
+
+  @Override
+  public UserChatStatus blockChatStatus(Integer chatId, Integer userId,
+      UserChatStatus.Status status) throws ChatException, UserException {
+    if (status != UserChatStatus.Status.BLOCKED) {
+      throw new ChatException("Invalid status. Only BLOCKED status is allowed for this operation.");
+    }
+
+    User blocker = userService.findUserById(userId);
+    if (blocker == null) {
+      throw new UserException("User not found with ID: " + userId);
+    }
+
+    Chat chat = chatRepository.findById(chatId)
+        .orElseThrow(() -> new ChatException("Chat not found with ID: " + chatId));
+
+    if (chat.isGroup()) {
+      throw new ChatException("Cannot perform bulk block on group chats.");
+    }
+
+    Set<User> usersInChat = chat.getUsers();
+    if (usersInChat == null || usersInChat.isEmpty()) {
+      throw new ChatException("No users found in the chat with ID: " + chatId);
+    }
+
+    for (User user : usersInChat) {
+      UserChatStatus userChatStatus = userChatStatusRepository.findByChatAndUser(chat, user)
+          .orElseThrow(() -> new ChatException("UserChatStatus not found for user ID: " + user.getId()));
+
+      userChatStatus.setStatus(UserChatStatus.Status.BLOCKED);
+      userChatStatus.setBlockedByUserId(blocker.getId());
+
+      userChatStatusRepository.save(userChatStatus);
+    }
+    return null;
+  }
+
+  @Override
+  public UserChatStatus unblockChatStatus(Integer chatId, Integer userId,
+      UserChatStatus.Status status) throws ChatException, UserException {
+
+    if (status != UserChatStatus.Status.DEFAULT) {
+      throw new ChatException("Invalid status. Only DEFAULT status is allowed for this operation.");
+    }
+
+    User requester = userService.findUserById(userId);
+    if (requester == null) {
+      throw new UserException("User not found with ID: " + userId);
+    }
+
+    Chat chat = chatRepository.findById(chatId)
+        .orElseThrow(() -> new ChatException("Chat not found with ID: " + chatId));
+
+    if (!chat.isGroup()) {
+      Set<User> usersInChat = chat.getUsers();
+
+      for (User user : usersInChat) {
+        UserChatStatus userChatStatus = userChatStatusRepository.findByChatAndUser(chat, user)
+            .orElseThrow(() -> new ChatException("UserChatStatus not found for user ID: " + user.getId()));
+
+        userChatStatus.setStatus(UserChatStatus.Status.DEFAULT);
+        userChatStatus.setBlockedByUserId(null);
+
+        userChatStatusRepository.save(userChatStatus);
+      }
+      return null;
+    } else {
+      UserChatStatus userChatStatus = userChatStatusRepository.findByChatAndUser(chat, requester)
+          .orElseThrow(() -> new ChatException("UserChatStatus not found for user ID: " + requester.getId()));
+
+      userChatStatus.setStatus(status);
+      userChatStatus.setBlockedByUserId(null);
+
+      return userChatStatusRepository.save(userChatStatus);
+    }
+  }
+
+  @Override
+  public Map<Integer, UserChatStatus> getUserStatusesInChat(Integer chatId) throws ChatException, UserException {
+    Chat chat = findChatById(chatId);
+    List<UserChatStatus> statuses = userChatStatusRepository.findAllByChat(chat);
+    Map<Integer, UserChatStatus> statusMap = new HashMap<>();
+    for (UserChatStatus status : statuses) {
+      statusMap.put(status.getUser().getId(), status);
+    }
+    return statusMap;
   }
 }

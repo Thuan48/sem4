@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom'; 
+import { Routes, Route } from 'react-router-dom';
 import './App.css';
 import Status from './Components/Status/Status';
 import StatusView from './Components/Status/StatusView';
@@ -12,6 +12,9 @@ import Blog from './Components/Blog/Blog';
 import CreateBlog from './Components/Blog/CreateBlog';
 import { HomePage } from './Components/HomePage';
 import FriendPage from './Components/Friends/FriendPage';
+import UserProfileCard from './Components/Profile/UserProfileCard';
+import PrivateRoute from './components/PrivateRoute';
+import UserProfile from './Components/Blog/UserProfile';
 
 function App() {
   return (
@@ -30,6 +33,17 @@ function App() {
           <Route path="/friends" element={<FriendPage />} />
           <Route path="/blogs" element={<Blog />} />
           <Route path="/blogs/create" element={<CreateBlog />} />
+          <Route path="/update-profile" element={<UserProfileCard handleNavigate={() => navigate(-1)} />} />
+          <Route path="/profile" element={
+            <PrivateRoute>
+              <UserProfile />
+            </PrivateRoute>
+          } />
+          <Route path="/profile/:userId" element={
+            <PrivateRoute>
+              <UserProfile />
+            </PrivateRoute>
+          } />
         </Routes>
       </div>
     </>

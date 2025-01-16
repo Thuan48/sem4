@@ -3,7 +3,11 @@ package sem4.proj4.request;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import sem4.proj4.entity.User;
+
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -11,14 +15,14 @@ import org.springframework.web.multipart.MultipartFile;
 public class BlogRequest {
     private String title;
     private String content;
-    private MultipartFile image;
-    private Integer userId; // Add this field
+    private List<MultipartFile> images; // Changed from single image to List
+    private User userId; // Add this field
 
-    public MultipartFile getImage() {
-        return image;
+    public List<MultipartFile> getImages() {
+        return images;
     }
 
-    public void setImage(MultipartFile image) {
-        this.image = image;
+    public void setImages(List<MultipartFile> images) {
+        this.images = images;
     }
 }

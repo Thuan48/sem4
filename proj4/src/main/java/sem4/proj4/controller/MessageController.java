@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import sem4.proj4.entity.Interaction;
 import sem4.proj4.entity.Message;
 import sem4.proj4.entity.User;
 import sem4.proj4.exception.ChatException;
@@ -128,6 +129,65 @@ public class MessageController {
       }
     } catch (UserException | ChatException e) {
       return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  @GetMapping("/search")
+  public ResponseEntity<List<Message>> searchMessages(
+      @RequestParam("chatId") Integer chatId,
+      @RequestParam("keyword") String keyword,
+      @RequestParam("pageSize") int pageSize,
+      @RequestParam("pageNumber") int pageNumber,
+      @RequestHeader("Authorization") String jwt) {
+    try {
+      userService.findUserProfile(jwt);
+      List<Message> messages = messageService.searchMessages(chatId, keyword, pageSize, pageNumber);
+      return new ResponseEntity<>(messages, HttpStatus.OK);
+    } catch (UserException | ChatException e) {
+      return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  @GetMapping("/pinned")
+  public ResponseEntity<List<Message>> getPinnedMessages(
+      @RequestParam("chatId") Integer chatId,
+      @RequestHeader("Authorization") String jwt) {
+    try {
+      userService.findUserProfile(jwt);
+      List<Message> pinnedMessages = messageService.getPinnedMessages(chatId);
+      return new ResponseEntity<>(pinnedMessages, HttpStatus.OK);
+    } catch (UserException | ChatException e) {
+       new ApiResponse(e.getMessage(), true);
+      return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  @PostMapping("/{messageId}/interact")
+  public ResponseEntity<Interaction> addInteraction(
+      @PathVariable Integer messageId,
+      @RequestParam("type") String type,
+      @RequestHeader("Authorization") String jwt) {
+    try {
+        User user = userService.findUserProfile(jwt);
+        Interaction interaction = messageService.addInteraction(messageId, user.getId(), type);
+        return new ResponseEntity<>(interaction, HttpStatus.OK);
+    } catch (UserException | ChatException | MessageException e) {
+        return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
+    }
+  }
+  
+  @DeleteMapping("/interact/{interactionId}")
+  public ResponseEntity<ApiResponse> removeInteraction(
+      @PathVariable Integer interactionId,
+      @RequestHeader("Authorization") String jwt) {
+    try {
+        User user = userService.findUserProfile(jwt);
+        messageService.removeInteraction(interactionId, user.getId());
+        ApiResponse response = new ApiResponse("Interaction removed successfully.", false);
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    } catch (UserException | ChatException | MessageException e) {
+        ApiResponse response = new ApiResponse(e.getMessage(), true);
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
   }
 

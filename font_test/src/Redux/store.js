@@ -8,7 +8,7 @@ import { friendsReducer } from "./Friend/Reducer";
 import blogReducer from "./Blog/Reducer";
 import commentReducer from "./Comment/Reducer";
 import { pollReducer } from "./Poll/Reducer";
-
+import themeReducer  from "./Theme/Reducer";
 
 const rootReducer = combineReducers({
   auth: authReducer,
@@ -19,6 +19,7 @@ const rootReducer = combineReducers({
   blogs: blogReducer,
   comments: commentReducer,
   poll: pollReducer,
+  theme: themeReducer, 
 });
 
 export const store = legacy_createStore(rootReducer, applyMiddleware(thunk));

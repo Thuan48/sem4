@@ -1,9 +1,12 @@
 package sem4.proj4.entity;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -11,6 +14,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -50,9 +54,9 @@ public class Message {
   @Column
   private boolean isPinned;
 
-  @ManyToOne
-  @JoinColumn(name = "poll_id")
-  private Poll poll;
+  @OneToMany(mappedBy = "message", cascade = CascadeType.ALL, orphanRemoval = true)
+  @JsonManagedReference
+  private List<Interaction> interactions;
 
   public Message(String content, String imageUrl, String audioUrl, User user, Chat chat) {
     this.content = content;
@@ -60,18 +64,6 @@ public class Message {
     this.audioUrl = audioUrl;
     this.user = user;
     this.chat = chat;
-    this.timestamp = LocalDateTime.now();
-    this.isRead = false;
-    this.isPinned = false;
-  }
-
-  public Message(String content, String imageUrl, String audioUrl, User user, Chat chat, Poll poll) {
-    this.content = content;
-    this.imageUrl = imageUrl;
-    this.audioUrl = audioUrl;
-    this.user = user;
-    this.chat = chat;
-    this.poll = poll;
     this.timestamp = LocalDateTime.now();
     this.isRead = false;
     this.isPinned = false;

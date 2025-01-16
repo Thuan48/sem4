@@ -9,8 +9,8 @@ import { useNavigate } from 'react-router-dom';
 import { Button, IconButton, Menu, MenuItem, Snackbar, SnackbarContent } from '@mui/material';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout, currenUser, searchUser } from '../Redux/Auth/Action';
-import { addUserGroup, createChat, deleteChat, getChatMembers, getChats, removeUserGroup } from '../Redux/Chat/Action';
-import { createMessage, deleteMessage, fetchPinnedMessages, getAllMessage, markAsRead } from '../Redux/Message/Action';
+import { addUserGroup, blockChatStatus, createChat, deleteChat, getChatMembers, getChats, getUserChatStatus, getUserStatusesInChat, removeUserGroup, unblockChatStatus, updateUserChatStatus } from '../Redux/Chat/Action';
+import { createMessage, deleteMessage, fetchPinnedMessages, getAllMessage, markAsRead, searchMessages } from '../Redux/Message/Action';
 import SockJS from "sockjs-client/dist/sockjs";
 import { over } from "stompjs";
 import ChatCard from './ChatCard/ChatCard';
@@ -26,10 +26,12 @@ import UserCard from './Profile/UserCard';
 import { UPDATE_USER_PROFILE } from '../Redux/Auth/ActionType';
 import { BASE_API_URL } from '../config/api';
 import '../index.css';
-import { FaSignOutAlt, FaUserFriends, FaBlog } from "react-icons/fa";
+import { FaSignOutAlt, FaUserFriends, FaBlog, FaSearch, FaBan, FaVolumeMute, FaVolumeUp, FaPoll } from "react-icons/fa";
 import PinnedMessages from './MessageCard/PinnedMessages';
 import PollsPage from './Poll/PollsPage';
 import CreatePollCard from './Poll/CreatePollCard';
+import { setDarkMode } from '../Redux/Theme/Action';
+import BlockMemberModal from './Group/BlockMemberModal';
 
 export const HomePage = () => {
   const [isConnect, setIsConnect] = useState(false);
@@ -42,7 +44,6 @@ export const HomePage = () => {
   const [userProfile, setUserProfile] = useState(false);
   const [isGroup, setIsGroup] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
-  const [isDarkMode, setIsDarkMode] = useState(true);
   const [messagePage, setMessagePage] = useState(0);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [openAddMemberModal, setOpenAddMemberModal] = useState(false);
@@ -59,10 +60,14 @@ export const HomePage = () => {
   const [selectedUserCardId, setSelectedUserCardId] = useState(null);
   const [anchorElSecondMenu, setAnchorElSecondMenu] = useState(null);
   const [isCreatePollOpen, setIsCreatePollOpen] = useState(false);
+  const [messageKeyword, setMessageKeyword] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [openBlockMemberModal, setOpenBlockMemberModal] = useState(false);
 
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { auth, chat, message, friends} = useSelector(store => store);
+  const { auth, chat, message, friends } = useSelector(store => store);
   const token = localStorage.getItem("token");
   const messageEndRef = useRef(null);
   const open = Boolean(anchorEl);
@@ -73,6 +78,12 @@ export const HomePage = () => {
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const pinnedMessagesIntervalRef = useRef(null);
+  const { isDarkMode } = useSelector(state => state.theme);
+  const currentChatStatusData = useSelector(
+    (state) =>
+      currentChat &&
+      state.chat.userChatStatuses[`${currentChat.id}-${auth.reqUser.id}`]
+  );
 
   const startRecording = async () => {
     try {
@@ -92,7 +103,7 @@ export const HomePage = () => {
         dispatch(createMessage({
           userId: auth.reqUser.id,
           chatId: currentChat.id,
-          content: '', 
+          content: '',
           audio: audioFile,
           token: token,
         }));
@@ -113,7 +124,7 @@ export const HomePage = () => {
   };
   const handleOpenCreatePollModal = () => {
     setIsCreatePollOpen(true);
-    handleCloseSecondMenu(); 
+    handleCloseSecondMenu();
   };
   const handleCloseCreatePollModal = () => {
     setIsCreatePollOpen(false);
@@ -305,7 +316,8 @@ export const HomePage = () => {
   };
   const createGroup = () => setIsGroup(true);
   const toggleDarkMode = () => {
-    setIsDarkMode((prevMode) => !prevMode);
+    dispatch(setDarkMode(!isDarkMode));
+    document.documentElement.classList.toggle('dark', !isDarkMode);
   };
   const handleDeleteMessage = (messageId) => {
     dispatch(deleteMessage(messageId, token, stompClient, currentChat.id))
@@ -461,14 +473,14 @@ export const HomePage = () => {
   useEffect(() => {
     const fetchChats = async () => {
       try {
-        await dispatch(getChats(token)); 
+        await dispatch(getChats(token));
       } catch (error) {
         console.error("Failed to fetch chats:", error);
         handleShowSnackbar("Failed to load chats. Please try again later.");
       }
     };
     fetchChats();
-    const interval = setInterval(fetchChats, 500); 
+    const interval = setInterval(fetchChats, 500);
     return () => clearInterval(interval);
   }, [dispatch, token]);
 
@@ -481,7 +493,7 @@ export const HomePage = () => {
   }, [currentChat, message.newMessage, dispatch, token]);
 
   useEffect(() => {
-    if(currentChat?.id){
+    if (currentChat?.id) {
       pinnedMessagesIntervalRef.current = setInterval(() => {
         dispatch(fetchPinnedMessages(currentChat.id, token));
       }, 1000);
@@ -493,7 +505,7 @@ export const HomePage = () => {
     const nextPage = messagePage + 1;
     setMessagePage(nextPage);
     setLoadingMessages(true);
-    dispatch(markAsRead(currentChat.id, userId, token));
+    dispatch(markAsRead(currentChat.id, auth.reqUser.id, token));
     const newMessages = await dispatch(getAllMessage({
       chatId: currentChat.id,
       token: token,
@@ -505,6 +517,105 @@ export const HomePage = () => {
     }
     setLoadingMessages(false);
   };
+
+  const handleSearchMessages = async () => {
+    if (currentChat && messageKeyword.trim() !== "") {
+      try {
+        const pageSize = 10;
+        const pageNumber = 0;
+        const results = await dispatch(searchMessages(currentChat.id, messageKeyword, token, pageSize, pageNumber));
+
+        if (results && results.length > 0) {
+          setSearchResults(results);
+          setIsSearchOpen(false);
+        } else {
+          handleShowSnackbar("No results found.");
+        }
+      } catch (error) {
+        console.error("Search failed:", error);
+        const errorMessage = error?.response?.data?.error || "Search failed. Please try again.";
+        handleShowSnackbar(errorMessage);
+      }
+    } else {
+      console.log("No current chat or empty keyword");
+      handleShowSnackbar("Please select a chat and enter at least 3 characters.");
+    }
+  };
+
+  const handleKeywordChange = (e) => {
+    setMessageKeyword(e.target.value);
+  };
+
+  const handleMutedChat = () => {
+    if (currentChat && auth.reqUser) {
+      dispatch(updateUserChatStatus(currentChat.id, auth.reqUser.id, 'MUTED', token));
+      handleShowSnackbar("Chat has been muted.");
+    } else {
+      handleShowSnackbar("Unable to mute the chat. Please try again.");
+    }
+  };
+
+  const handleBlockChat = () => {
+    if (currentChat && auth.reqUser) {
+      dispatch(blockChatStatus(currentChat.id, token));
+      handleShowSnackbar("Chat has been blocked.");
+    } else {
+      handleShowSnackbar("Unable to block the chat. Please try again.");
+    }
+  }
+
+  const handleUnblockChat = () => {
+    if (currentChat && auth.reqUser) {
+      dispatch(unblockChatStatus(currentChat.id, token));
+      handleShowSnackbar("Chat has been blocked.");
+    } else {
+      handleShowSnackbar("Unable to block the chat. Please try again.");
+    }
+  }
+
+  const handleDefaultChat = () => {
+    if (currentChat && auth.reqUser) {
+      dispatch(updateUserChatStatus(currentChat.id, auth.reqUser.id, 'DEFAULT', token));
+      handleShowSnackbar("Chat has been set to default.");
+    } else {
+      handleShowSnackbar("Unable to set the chat to default. Please try again.");
+    }
+  }
+
+  useEffect(() => {
+    if (currentChat && currentChat.id && auth.reqUser.id && token) {
+      const interval = setInterval(() => {
+        dispatch(getUserChatStatus(currentChat.id, auth.reqUser.id, token));
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [currentChat, auth.reqUser, token, dispatch]);
+
+  const handleOpenBlockMemberModal = () => {
+    setOpenBlockMemberModal(true);
+  };
+
+  const handleCloseBlockMemberModal = () => {
+    setOpenBlockMemberModal(false);
+  };
+
+  useEffect(() => {
+    if (currentChat && currentChat.group) {
+      const otherUsers = currentChat.users.filter(user => user.id !== auth.reqUser.id);
+      setUsersInGroup(otherUsers);
+    } else if (currentChat && !currentChat.group) {
+      const otherUser = currentChat.users.find(user => user.id !== auth.reqUser.id);
+      setUsersInGroup(otherUser ? [otherUser] : []);
+    } else {
+      setUsersInGroup([]);
+    }
+  }, [currentChat, auth.reqUser?.id]);
+
+  useEffect(() => {
+    if (openBlockMemberModal && currentChat?.id) {
+      dispatch(getUserStatusesInChat(currentChat.id, token));
+    }
+  }, [openBlockMemberModal, currentChat, dispatch, token]);
 
   const imageUrl = auth.reqUser?.profile_picture
     ? `http://localhost:8080/uploads/profile/${auth.reqUser.profile_picture}`
@@ -524,7 +635,7 @@ export const HomePage = () => {
               handleNavigate={() => setUserCardOpen(false)}
             />
           )}
-          
+
           {!isProfile && !isGroup && (
             <div className="flex flex-col h-full">
               <div className="flex justify-between items-center p-4 border-b border-border dark:border-gray-700">
@@ -674,6 +785,35 @@ export const HomePage = () => {
                     </p>
                   </div>
                   <div className='flex items-center space-x-4'>
+                    {isSearchOpen ? (
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="text"
+                          value={messageKeyword}
+                          onChange={handleKeywordChange}
+                          placeholder="Search messages..."
+                          className="text-black border rounded px-4 py-2 focus:outline-none"
+                        />
+                        <FaSearch
+                          onClick={handleSearchMessages}
+                          className={`text-2xl cursor-pointer hover:text-teal-200 transition-colors ${messageKeyword.trim().length < 3 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          style={{ pointerEvents: messageKeyword.trim().length < 3 ? 'none' : 'auto' }} // Disable click if invalid
+                        />
+                        <button
+                          onClick={() => setIsSearchOpen(false)}
+                          className="text-xl bg-transparent border-0 cursor-pointer text-gray-300 hover:text-white"
+                          aria-label="Close Search"
+                        >
+                          &times;
+                        </button>
+                      </div>
+                    ) : (
+                      <FaSearch
+                        onClick={() => setIsSearchOpen(true)}
+                        className="text-2xl cursor-pointer hover:text-teal-200 transition-colors"
+                        aria-label="Open Search"
+                      />
+                    )}
                     <BsThreeDotsVertical
                       onClick={handleClickSecond}
                       className='text-2xl cursor-pointer hover:text-teal-200 transition-colors' />
@@ -683,37 +823,82 @@ export const HomePage = () => {
                       onClose={handleCloseSecondMenu}
                       MenuListProps={{ 'aria-labelledby': 'basic-button' }}
                     >
-                      {currentChat.group ? [
-                        <MenuItem key="add-member" onClick={openAddMember}>
-                          <IoIosPersonAdd />
-                          Add Member
-                        </MenuItem>,
-                        <MenuItem key="remove-member" onClick={handleOpenRemoveMemberModal}>
-                          <MdOutlinePersonRemoveAlt1 />
-                          Remove Member
-                        </MenuItem>,
-                        <MenuItem key="out-group" onClick={handleOutGroup}>
-                          <FaSignOutAlt />
-                          Out Group
-                        </MenuItem>,
-                        isAdmin && (
-                          <MenuItem key="delete-group" onClick={handleDeleteGroup}>
-                            <AiOutlineDelete />
-                            Delete Chat
-                          </MenuItem>,
-                          <MenuItem key="create-poll" onClick={handleOpenCreatePollModal}>
-                            Create Poll
+                      {currentChat && !currentChat.group && (
+                        <>
+                          <MenuItem key="profile" onClick={() => handleOpenUserCard(getOtherUserId())}>
+                            <ImProfile style={{ marginRight: '8px' }} />
+                            Profile
                           </MenuItem>
-                        ),] : [
-                        <MenuItem key="profile" onClick={() => handleOpenUserCard(getOtherUserId())}>
-                          <ImProfile />
-                          Profile
-                        </MenuItem>,
-                        <MenuItem key="delete-chat" onClick={handleDeleteGroup}>
-                          <AiOutlineDelete />
-                          Delete Chat
-                        </MenuItem>,
-                      ]}
+
+                          {currentChatStatusData && currentChatStatusData.status === 'BLOCKED' && currentChatStatusData.blockedByUserId === auth.reqUser.id ? (
+                            <MenuItem key="unblock-chat" onClick={handleUnblockChat}>
+                              <FaBan style={{ marginRight: '8px' }} />
+                              Unblock
+                            </MenuItem>
+                          ) : (
+                            currentChatStatusData && ['DEFAULT', 'MUTED'].includes(currentChatStatusData.status) && (
+                              <MenuItem key="block-chat" onClick={handleBlockChat}>
+                                <FaBan style={{ marginRight: '8px' }} />
+                                Block
+                              </MenuItem>
+                            )
+                          )}
+
+                          <MenuItem key="delete-chat" onClick={handleDeleteGroup}>
+                            <AiOutlineDelete style={{ marginRight: '8px' }} />
+                            Delete Chat
+                          </MenuItem>
+                        </>
+                      )}
+
+                      {currentChat && currentChat.group && (
+                        [
+                          <MenuItem key="add-member" onClick={openAddMember}>
+                            <IoIosPersonAdd style={{ marginRight: '8px' }} />
+                            Add Member
+                          </MenuItem>,
+                          <MenuItem key="remove-member" onClick={handleOpenRemoveMemberModal}>
+                            <MdOutlinePersonRemoveAlt1 style={{ marginRight: '8px' }} />
+                            Remove Member
+                          </MenuItem>,
+                          <MenuItem key="out-group" onClick={handleOutGroup}>
+                            <FaSignOutAlt style={{ marginRight: '8px' }} />
+                            Out Group
+                          </MenuItem>,
+                          isAdmin && (
+                            <>
+                              <MenuItem key="block-member" onClick={handleOpenBlockMemberModal}>
+                                <FaBan style={{ marginRight: '8px' }} />
+                                Block Member
+                              </MenuItem>
+                              <MenuItem key="delete-group" onClick={handleDeleteGroup}>
+                                <AiOutlineDelete style={{ marginRight: '8px' }} />
+                                Delete Chat
+                              </MenuItem>
+                              <MenuItem key="create-poll" onClick={handleOpenCreatePollModal}>
+                                <FaPoll style={{ marginRight: '8px' }} />
+                                Create Poll
+                              </MenuItem>
+                            </>
+                          )
+                        ]
+                      )}
+
+                      {currentChatStatusData && currentChatStatusData.status !== 'BLOCKED' && (
+                        currentChatStatusData.status === 'MUTED' ? (
+                          <MenuItem key="unmute-chat" onClick={handleDefaultChat}>
+                            <FaVolumeUp style={{ marginRight: '8px' }} />
+                            Unmute
+                          </MenuItem>
+                        ) : (
+                          ['DEFAULT', 'MUTED'].includes(currentChatStatusData.status) && (
+                            <MenuItem key="mute-chat" onClick={handleMutedChat}>
+                              <FaVolumeMute style={{ marginRight: '8px' }} />
+                              Mute
+                            </MenuItem>
+                          )
+                        )
+                      )}
                     </Menu>
                     <AddMemberModal
                       openAddMemberModal={openAddMemberModal}
@@ -727,6 +912,12 @@ export const HomePage = () => {
                       onClose={() => setOpenRemoveMemberModal(false)}
                       users={usersInGroup}
                       onRemove={handleRemoveMember}
+                    />
+                    <BlockMemberModal
+                      open={openBlockMemberModal}
+                      onClose={handleCloseBlockMemberModal}
+                      users={usersInGroup}
+                      chatId={currentChat?.id}
                     />
                     <button onClick={toggleDarkMode} className="p-2 rounded-full hover:bg-teal-600 dark:hover:bg-teal-700 transition-colors">
                       {isDarkMode ? <BsSun className="text-xl" /> : <BsMoon className="text-xl" />}
@@ -742,7 +933,7 @@ export const HomePage = () => {
                     onDelete={handleDeleteMessage}
                   />
                 )}
-                <PollsPage chatId={currentChat.id} />  
+                <PollsPage chatId={currentChat.id} />
                 <div className="flex justify-center">
                   <button onClick={handleLoadMessage} className="flex items-center justify-center w-[3.8vw] p-2 bg-gray-200 dark:bg-gray-700 rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
                     <BsArrowUp className="text-xl text-gray-700 dark:text-gray-300" />
@@ -756,56 +947,59 @@ export const HomePage = () => {
                       onDelete={() => handleDeleteMessage(msg.id)}
                       userId={msg.user.id}
                       currentUserId={auth.reqUser.id}
+                      isGroup={currentChat.group}
                     />
                   </div>
                 ))}
                 <div ref={messageEndRef} />
               </div>
-              <div className="bg-white dark:bg-gray-800 p-4 shadow-inner">
-                <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-full shadow-sm">
-                  <BsEmojiSmile
-                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                    className="text-gray-500 dark:text-gray-400 mx-3 cursor-pointer hover:text-teal-500 dark:hover:text-teal-400 transition-colors" />
-                  {showEmojiPicker && (
-                    <EmojiPicker onEmojiClick={handleEmojiClick}
-                      style={{ position: 'absolute', bottom: '60px', right: '20px', zIndex: 1000 }}
+              {currentChatStatusData && currentChatStatusData.status !== 'BLOCKED' && (
+                <div className="bg-white dark:bg-gray-800 p-4 shadow-inner">
+                  <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-full shadow-sm">
+                    <BsEmojiSmile
+                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                      className="text-gray-500 dark:text-gray-400 mx-3 cursor-pointer hover:text-teal-500 dark:hover:text-teal-400 transition-colors" />
+                    {showEmojiPicker && (
+                      <EmojiPicker onEmojiClick={handleEmojiClick}
+                        style={{ position: 'absolute', bottom: '60px', right: '20px', zIndex: 1000 }}
+                      />
+                    )}
+                    <input
+                      className="flex-1 py-2 px-4 bg-transparent focus:outline-none text-gray-700 dark:text-gray-200"
+                      type="text"
+                      placeholder="Type a message..."
+                      value={content}
+                      onChange={(e) => setContent(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === "Enter") {
+                          handleCreateNewMessage();
+                        }
+                      }}
                     />
-                  )}
-                  <input
-                    className="flex-1 py-2 px-4 bg-transparent focus:outline-none text-gray-700 dark:text-gray-200"
-                    type="text"
-                    placeholder="Type a message..."
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === "Enter") {
-                        handleCreateNewMessage();
-                      }
-                    }}
-                  />
-                  <label htmlFor="image-upload" className="mx-3 cursor-pointer hover:text-teal-500 dark:hover:text-teal-400 transition-colors">
-                    <ImAttachment className="text-gray-500 dark:text-gray-400" />
-                  </label>
-                  <input
-                    id="image-upload"
-                    type="file"
-                    accept="image/*"
-                    style={{ display: 'none' }}
-                    onChange={(e) => setImage(e.target.files[0])}
-                  />
-                  {isRecording ? (
-                    <BsStopFill
-                      className="text-1xl text-red-500 cursor-pointer mx-3 hover:text-red-600 transition-colors"
-                      onClick={stopRecording}
+                    <label htmlFor="image-upload" className="mx-3 cursor-pointer hover:text-teal-500 dark:hover:text-teal-400 transition-colors">
+                      <ImAttachment className="text-gray-500 dark:text-gray-400" />
+                    </label>
+                    <input
+                      id="image-upload"
+                      type="file"
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                      onChange={(e) => setImage(e.target.files[0])}
                     />
-                  ) : (
-                    <BsMicFill
-                      className="text-1xl text-gray-500 dark:text-gray-400 mx-3 cursor-pointer hover:text-teal-500 dark:hover:text-teal-400 transition-colors"
-                      onClick={startRecording}
-                    />
-                  )}
+                    {isRecording ? (
+                      <BsStopFill
+                        className="text-1xl text-red-500 cursor-pointer mx-3 hover:text-red-600 transition-colors"
+                        onClick={stopRecording}
+                      />
+                    ) : (
+                      <BsMicFill
+                        className="text-1xl text-gray-500 dark:text-gray-400 mx-3 cursor-pointer hover:text-teal-500 dark:hover:text-teal-400 transition-colors"
+                        onClick={startRecording}
+                      />
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
             </>
           )}
           {!currentChat && (

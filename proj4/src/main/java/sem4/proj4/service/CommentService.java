@@ -4,12 +4,11 @@ import sem4.proj4.entity.Comment;
 import sem4.proj4.exception.CommentException;
 import sem4.proj4.exception.BlogNotFoundException;
 import sem4.proj4.exception.UserException;
-
 import java.util.List;
 
 public interface CommentService {
-
-    Comment createComment(Integer blogId, Integer userId, String content) throws BlogNotFoundException, UserException;
+    Comment createComment(Integer blogId, Integer userId, String content, Integer parentCommentId)
+            throws BlogNotFoundException, UserException, CommentException;
 
     List<Comment> getCommentsByBlogId(Integer blogId) throws BlogNotFoundException;
 

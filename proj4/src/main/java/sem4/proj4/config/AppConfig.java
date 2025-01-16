@@ -43,9 +43,9 @@ public class AppConfig {
     cfg.setAllowedOrigins(
         Arrays.asList(
             "http://localhost:5173", "http://127.0.0.1:5173",
-            "http://localhost:53317", "http://127.0.0.1:53317",
+            "http://localhost:62285", "http://127.0.0.1:62285",
             "http://10.0.2.2:5554", "http://localhost:5554",
-            "http://172.16.1.98:5554"));
+            "http://192.168.101.8:5554"));
     cfg.setAllowedMethods(Collections.singletonList("*"));
     cfg.setAllowCredentials(true);
     cfg.setAllowedHeaders(Collections.singletonList("*"));

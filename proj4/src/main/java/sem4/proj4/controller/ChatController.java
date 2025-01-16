@@ -17,6 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import sem4.proj4.entity.Chat;
 import sem4.proj4.entity.User;
+import sem4.proj4.entity.UserChatStatus;
 import sem4.proj4.exception.ChatException;
 import sem4.proj4.exception.UserException;
 import sem4.proj4.request.ChatDto;
@@ -27,6 +28,7 @@ import sem4.proj4.service.ChatService;
 import sem4.proj4.service.UserService;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/chats")
@@ -119,7 +121,8 @@ public class ChatController {
   }
 
   @GetMapping("/getChats")
-  public ResponseEntity<List<ChatDto>> getChats(@RequestHeader("Authorization") String jwt) throws ChatException, UserException {
+  public ResponseEntity<List<ChatDto>> getChats(@RequestHeader("Authorization") String jwt)
+      throws ChatException, UserException {
     User reqUser = userService.findUserProfile(jwt);
     List<ChatDto> chatDtos = chatService.getChatsWithLastMessage(reqUser.getId());
     return new ResponseEntity<>(chatDtos, HttpStatus.OK);
@@ -163,5 +166,78 @@ public class ChatController {
     } catch (UserException | ChatException e) {
       return new ResponseEntity<>(0, HttpStatus.BAD_REQUEST);
     }
+  }
+
+  @PostMapping("/{chatId}/status/{userId}")
+  public ResponseEntity<?> updateUserChatStatus(
+      @PathVariable Integer chatId,
+      @PathVariable Integer userId,
+      @RequestParam UserChatStatus.Status status,
+      @RequestHeader("Authorization") String jwt) {
+    try {
+      User reqUser = userService.findUserProfile(jwt);
+      UserChatStatus updatedStatus = chatService.updateUserChatStatus(chatId, userId, reqUser.getId(), status);
+      return new ResponseEntity<>(updatedStatus, HttpStatus.OK);
+    } catch (UserException | ChatException e) {
+      ApiResponse response = new ApiResponse(e.getMessage(), true);
+      return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  @GetMapping("/{chatId}/status/{userId}")
+  public ResponseEntity<?> getUserChatStatus(
+      @PathVariable Integer chatId,
+      @PathVariable Integer userId,
+      @RequestHeader("Authorization") String jwt) {
+    try {
+      userService.findUserProfile(jwt);
+      UserChatStatus status = chatService.getUserChatStatus(chatId, userId);
+      return new ResponseEntity<>(status, HttpStatus.OK);
+    } catch (UserException | ChatException e) {
+      ApiResponse response = new ApiResponse(e.getMessage(), true);
+      return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  @PostMapping("/{chatId}/block")
+  public ResponseEntity<ApiResponse> blockChatStatus(
+      @PathVariable Integer chatId,
+      @RequestHeader("Authorization") String jwt) {
+    try {
+      User user = userService.findUserProfile(jwt);
+
+      chatService.blockChatStatus(chatId, user.getId(), UserChatStatus.Status.BLOCKED);
+
+      ApiResponse response = new ApiResponse("Chat block success!.", false);
+      return new ResponseEntity<>(response, HttpStatus.OK);
+    } catch (UserException | ChatException e) {
+      ApiResponse response = new ApiResponse(e.getMessage(), true);
+      return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  @PostMapping("/{chatId}/unblock")
+  public ResponseEntity<ApiResponse> unblockChatStatus(
+      @PathVariable Integer chatId,
+      @RequestHeader("Authorization") String jwt) {
+    try {
+      User user = userService.findUserProfile(jwt);
+
+      chatService.unblockChatStatus(chatId, user.getId(), UserChatStatus.Status.DEFAULT);
+
+      ApiResponse response = new ApiResponse("Chat ununblock success!.", false);
+      return new ResponseEntity<>(response, HttpStatus.OK);
+    } catch (UserException | ChatException e) {
+      ApiResponse response = new ApiResponse(e.getMessage(), true);
+      return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  @GetMapping("/{chatId}/statuses")
+  public ResponseEntity<Map<Integer, UserChatStatus>> getUserStatusesInChat(
+      @PathVariable Integer chatId,
+      @RequestHeader("Authorization") String jwt) throws ChatException, UserException {
+    Map<Integer, UserChatStatus> statuses = chatService.getUserStatusesInChat(chatId);
+    return new ResponseEntity<>(statuses, HttpStatus.OK);
   }
 }

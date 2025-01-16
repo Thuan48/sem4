@@ -1,6 +1,6 @@
 import { BASE_API_URL } from "../../config/api";
 import { sendNotification } from "../Notification/Action";
-import { ADD_USERS_GROUP, CREATE_CHAT, CREATE_GROUP, DELETE_CHAT, GET_CHAT, GET_CHAT_ERROR, GET_CHAT_MEMBERS, GET_USERS_CHAT, REMOVE_USERS_GROUP, MARK_AS_READ_SUCCESS } from "./ActionType";
+import { ADD_USERS_GROUP, CREATE_CHAT, CREATE_GROUP, DELETE_CHAT, GET_CHAT, GET_CHAT_ERROR, GET_CHAT_MEMBERS, GET_USERS_CHAT, REMOVE_USERS_GROUP, MARK_AS_READ_SUCCESS, GET_USER_CHAT_STATUS, GET_USER_CHAT_STATUS_SUCCESS, GET_USER_CHAT_STATUS_FAILURE, UPDATE_USER_CHAT_STATUS, UPDATE_USER_CHAT_STATUS_SUCCESS, UPDATE_USER_CHAT_STATUS_FAILURE, BLOCK_CHAT_STATUS, BLOCK_CHAT_STATUS_SUCCESS, BLOCK_CHAT_STATUS_FAILURE, UNBLOCK_CHAT_STATUS, UNBLOCK_CHAT_STATUS_SUCCESS, UNBLOCK_CHAT_STATUS_FAILURE, GET_USER_STATUSES_IN_CHAT, GET_USER_STATUSES_IN_CHAT_SUCCESS, GET_USER_STATUSES_IN_CHAT_FAILURE } from "./ActionType";
 
 export const createChat = (chatData) => async (dispatch) => {
   try {
@@ -158,3 +158,115 @@ export const getChatMembers = (chatId, token) => async (dispatch) => {
   }
 };
 
+export const getUserChatStatus = (chatId, userId, token) => async (dispatch) => {
+  dispatch({ type: GET_USER_CHAT_STATUS });
+  try {
+    const res = await fetch(`${BASE_API_URL}/api/chats/${chatId}/status/${userId}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!res.ok) {
+      throw new Error(`Error: ${res.status}`);
+    }
+
+    const status = await res.json();
+    dispatch({ type: GET_USER_CHAT_STATUS_SUCCESS, payload: { chatId, userId, status } });
+  } catch (error) {
+    console.error("getUserChatStatus failed:", error);
+    dispatch({ type: GET_USER_CHAT_STATUS_FAILURE, payload: error.message });
+  }
+};
+
+export const updateUserChatStatus = (chatId, userId, status, token) => async (dispatch) => {
+  dispatch({ type: UPDATE_USER_CHAT_STATUS });
+  try {
+    const res = await fetch(`${BASE_API_URL}/api/chats/${chatId}/status/${userId}?status=${status}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!res.ok) {
+      throw new Error(`Error: ${res.status}`);
+    }
+
+    const updatedStatus = await res.json();
+    dispatch({ type: UPDATE_USER_CHAT_STATUS_SUCCESS, payload: { chatId, userId, status: updatedStatus } });
+    dispatch(sendNotification("Status Updated", `Your status has been updated to ${status}.`));
+  } catch (error) {
+    console.error("updateUserChatStatus failed:", error);
+    dispatch({ type: UPDATE_USER_CHAT_STATUS_FAILURE, payload: error.message });
+  }
+};
+
+export const blockChatStatus = (chatId, token) => async (dispatch) => {
+  dispatch({ type: BLOCK_CHAT_STATUS });
+  try {
+    const res = await fetch(`${BASE_API_URL}/api/chats/${chatId}/block`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!res.ok) {
+      throw new Error(`Error: ${res.status}`);
+    }
+
+    const updatedStatuses = await res.json();
+    dispatch({ type: BLOCK_CHAT_STATUS_SUCCESS, payload: updatedStatuses });
+  } catch (error) {
+    console.error("blockChatStatus failed:", error);
+    dispatch({ type: BLOCK_CHAT_STATUS_FAILURE, payload: error.message });
+  }
+};
+
+export const unblockChatStatus = (chatId, token) => async (dispatch) => {
+  dispatch({ type: UNBLOCK_CHAT_STATUS });
+  try {
+    const res = await fetch(`${BASE_API_URL}/api/chats/${chatId}/unblock`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!res.ok) {
+      throw new Error(`Error: ${res.status}`);
+    }
+
+    const updatedStatuses = await res.json();
+    dispatch({ type: UNBLOCK_CHAT_STATUS_SUCCESS, payload: updatedStatuses });
+  } catch (error) {
+    console.error("unblockChatStatus failed:", error);
+    dispatch({ type: UNBLOCK_CHAT_STATUS_FAILURE, payload: error.message });
+  }
+};
+
+export const getUserStatusesInChat = (chatId, token) => async (dispatch) => {
+  dispatch({ type: GET_USER_STATUSES_IN_CHAT });
+  try {
+    const response = await fetch(`${BASE_API_URL}/api/chats/${chatId}/statuses`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) {
+      throw new Error('Failed to fetch user statuses.');
+    }
+    const data = await response.json();
+    dispatch({ type: GET_USER_STATUSES_IN_CHAT_SUCCESS, payload: { chatId: String(chatId), statuses: data } });
+  } catch (error) {
+    dispatch({ type: GET_USER_STATUSES_IN_CHAT_FAILURE, payload: error.message });
+  }
+};

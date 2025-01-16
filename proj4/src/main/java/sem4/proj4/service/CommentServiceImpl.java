@@ -14,6 +14,7 @@ import sem4.proj4.repository.UserRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.ArrayList;
 
 @Service
 public class CommentServiceImpl implements CommentService {
@@ -28,15 +29,37 @@ public class CommentServiceImpl implements CommentService {
     private UserRepository userRepository;
 
     @Override
-    public Comment createComment(Integer blogId, Integer userId, String content) throws BlogNotFoundException, UserException {
-        Blog blog = blogRepository.findById(blogId).orElseThrow(() -> new BlogNotFoundException("Blog not found"));
-        User user = userRepository.findById(userId).orElseThrow(() -> new UserException("User not found"));
-        Comment comment = new Comment();
-        comment.setBlog(blog);
-        comment.setUser(user);
-        comment.setContent(content);
-        comment.setCreatedAt(LocalDateTime.now());
-        return commentRepository.save(comment);
+    public Comment createComment(Integer blogId, Integer userId, String content, Integer parentCommentId)
+            throws BlogNotFoundException, UserException, CommentException {
+        try {
+            Blog blog = blogRepository.findById(blogId)
+                    .orElseThrow(() -> new BlogNotFoundException("Blog not found with ID: " + blogId));
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new UserException("User not found with ID: " + userId));
+
+            Comment comment = new Comment();
+            comment.setBlog(blog);
+            comment.setUser(user);
+            comment.setContent(content);
+            comment.setCreatedAt(LocalDateTime.now());
+
+            if (parentCommentId != null) {
+                Comment parentComment = commentRepository.findById(parentCommentId)
+                        .orElseThrow(
+                                () -> new CommentException("Parent comment not found with ID: " + parentCommentId));
+                comment.setParentComment(parentComment);
+            } else {
+                comment.setParentComment(null); // Explicitly set to null
+            }
+
+            return commentRepository.save(comment);
+        } catch (BlogNotFoundException | UserException | CommentException e) {
+            // Re-throw custom exceptions to be handled by the controller
+            throw e;
+        } catch (Exception e) {
+            // Wrap any other exceptions in CommentException
+            throw new CommentException("Failed to create comment: " + e.getMessage(), e);
+        }
     }
 
     @Override
@@ -44,12 +67,14 @@ public class CommentServiceImpl implements CommentService {
         if (!blogRepository.existsById(blogId)) {
             throw new BlogNotFoundException("Blog not found");
         }
-        return commentRepository.findByBlogId(blogId);
+        List<Comment> comments = commentRepository.findByBlogId(blogId);
+        return comments != null ? comments : new ArrayList<>();
     }
 
     @Override
     public Comment findCommentById(Integer commentId) throws CommentException {
-        return commentRepository.findById(commentId).orElseThrow(() -> new CommentException("Comment not found"));
+        return commentRepository.findById(commentId)
+                .orElseThrow(() -> new CommentException("Comment not found with ID: " + commentId));
     }
 
     @Override

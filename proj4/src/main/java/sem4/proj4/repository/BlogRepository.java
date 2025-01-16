@@ -8,6 +8,8 @@ import org.springframework.data.domain.Pageable;
 
 public interface BlogRepository extends JpaRepository<Blog, Integer> {
   Page<Blog> findAll(Pageable pageable);
+
   List<Blog> findByUserId(Integer userId);
+
   boolean existsById(Integer blogId);
 }

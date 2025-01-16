@@ -17,6 +17,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -115,13 +116,59 @@ public class BlogServiceImplement implements BlogService {
     }
 
     @Override
-    public Blog updateBlog(Integer id, String content) {
-        Blog blog = blogRepository.findById(id)
-                .orElseThrow(() -> new BlogNotFoundException("Blog not found with ID: " + id));
-        blog.setContent(content);
-        blog.setUpdateTime(LocalDateTime.now());
+    public Blog updateBlog(Integer blogId, User user, BlogRequest blogRequest) throws Exception {
+        Blog existingBlog = blogRepository.findById(blogId)
+                .orElseThrow(() -> new Exception("Blog not found with id: " + blogId));
 
-        return blogRepository.save(blog);
+        // Check if the user is the owner of the blog
+        if (!existingBlog.getUser().getId().equals(user.getId())) {
+            throw new Exception("You don't have permission to update this blog");
+        }
+
+        // Update content
+        existingBlog.setContent(blogRequest.getContent());
+
+        // Handle existing images
+        List<String> updatedImages = new ArrayList<>();
+        if (blogRequest.getExistingImages() != null) {
+            updatedImages.addAll(blogRequest.getExistingImages());
+        }
+
+        // Handle new images
+        if (blogRequest.getImages() != null && !blogRequest.getImages().isEmpty()) {
+            validateBlogImages(blogRequest);
+
+            Path uploadPath = Paths.get(uploadDir + "/blogs");
+            if (!Files.exists(uploadPath)) {
+                Files.createDirectories(uploadPath);
+            }
+
+            for (MultipartFile image : blogRequest.getImages()) {
+                String filename = System.currentTimeMillis() + "_" + image.getOriginalFilename();
+                Path filePath = uploadPath.resolve(filename);
+                Files.copy(image.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+                updatedImages.add(filename);
+            }
+        }
+
+        existingBlog.setImages(new HashSet<>(updatedImages));
+
+        return blogRepository.save(existingBlog);
+    }
+
+    @Override
+    public void validateBlogImages(BlogRequest blogRequest) {
+        if (blogRequest.getImages() != null) {
+            for (MultipartFile image : blogRequest.getImages()) {
+                if (image.getSize() > 5242880) { // 5MB limit
+                    throw new IllegalArgumentException("Image size must be less than 5MB");
+                }
+                String contentType = image.getContentType();
+                if (contentType == null || !contentType.startsWith("image/")) {
+                    throw new IllegalArgumentException("File must be an image");
+                }
+            }
+        }
     }
 
     @Override
@@ -152,6 +199,12 @@ public class BlogServiceImplement implements BlogService {
     public Page<Blog> getAllBlogs(int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
         return blogRepository.findAll(pageable);
+    }
+
+    @Override
+    public Blog updateBlog(Integer id, String content) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'updateBlog'");
     }
 
     // private String saveImage(MultipartFile file) throws IOException {

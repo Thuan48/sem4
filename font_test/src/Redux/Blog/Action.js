@@ -89,21 +89,30 @@ export const createBlog = (formData, token) => async (dispatch) => {
     }
 };
 
-export const updateBlog = (blogId, blogData, token) => async (dispatch) => {
+export const updateBlog = (blogId, formData, token) => async (dispatch) => {
     try {
         const res = await fetch(`${BASE_API_URL}/blogs/update/${blogId}`, {
             method: "PUT",
             headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
+                Authorization: `Bearer ${token}`
+                // Don't set Content-Type when sending FormData
             },
-            body: JSON.stringify(blogData),
+            body: formData
         });
+
+        if (!res.ok) {
+            const errorData = await res.json();
+            console.error('Server response:', errorData);
+            throw new Error(errorData.message || `HTTP error! status: ${res.status}`);
+        }
+
         const resData = await res.json();
-        console.log('Updated blog:', resData);
         dispatch({ type: UPDATE_BLOG, payload: resData });
+        dispatch(fetchBlogs()); // Refresh the blog list
+        return resData;
     } catch (error) {
-        console.log("catch error:", error);
+        console.error("Error updating blog:", error);
+        throw error;
     }
 };
 
@@ -112,13 +121,11 @@ export const deleteBlog = (blogId, token) => async (dispatch) => {
         const res = await fetch(`${BASE_API_URL}/blogs/delete/${blogId}`, {
             method: "DELETE",
             headers: {
-                // Use Bearer token here
                 "Authorization": `Bearer ${token}`
             },
         });
 
         if (!res.ok) {
-            // Attempt JSON parse, then fallback to text
             let errorMsg;
             try {
                 const errorData = await res.json();
@@ -129,22 +136,15 @@ export const deleteBlog = (blogId, token) => async (dispatch) => {
             throw new Error(errorMsg || 'Failed to delete blog');
         }
 
-        // If server returns JSON, parse it; otherwise ignore
-        let resData = null;
-        try {
-            resData = await res.json();
-        } catch (e) {
-            console.log('No valid JSON response:', e);
-        }
-
         dispatch({
             type: DELETE_BLOG,
             payload: { blogId }
         });
 
-        return resData;
+        return;
     } catch (error) {
         console.error("Delete error:", error);
+        dispatch(fetchBlogsFailure(error.toString())); // Dispatch failure action
         throw error;
     }
 };

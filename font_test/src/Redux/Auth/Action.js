@@ -11,11 +11,18 @@ export const register = (data) => async (dispatch) => {
       body: JSON.stringify(data)
     })
     const resData = await res.json();
+
+    if (!res.ok) {
+      throw new Error(resData.message || "Registration failed.");
+    }
+
     if (resData.jwt) localStorage.setItem("token", resData.jwt)
     //console.log("register", resData);
     dispatch({ type: REGISTER, payload: resData });
+    return { success: true };
   } catch (error) {
     console.log("catch error:", error);
+    return { success: false, message: "Email already exists!" };
   }
 }
 
@@ -106,7 +113,7 @@ export const updateProfile = (formData, token) => async (dispatch) => {
       },
       body: data,
     });
-    
+
     dispatch({ type: UPDATE_USER_PROFILE, payload: formData });
   } catch (error) {
     console.log("catch error:", error);
@@ -198,7 +205,7 @@ export const changePassword = (token, oldPassword, newPassword) => async (dispat
     if (!res.ok) {
       return { success: false, message: resData.message || "Failed to change password." };
     }
-    
+
     dispatch({ type: CHANGE_PASSWORD, payload: resData });
     return { success: true, message: "Password changed successfully." };
   } catch (error) {

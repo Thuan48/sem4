@@ -19,14 +19,18 @@ const Signup = () => {
     setOpen(false);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (inputData.password !== inputData.confirmPassword) {
       setErrorMessage("Passwords do not match!");
       return;
     }
-    dispatch(register({ email: inputData.email, full_name: inputData.full_name, password: inputData.password }));
-    setOpen(true);
+    const result = await dispatch(register({ email: inputData.email, full_name: inputData.full_name, password: inputData.password }));
+    if (result.success) {
+      setOpen(true);
+    } else {
+      setErrorMessage(result.message);
+    }
   };
 
   const handleChange = (e) => {

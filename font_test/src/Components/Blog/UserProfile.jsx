@@ -6,7 +6,7 @@ import { BsCalendarDate, BsGenderAmbiguous, BsTelephone, BsGeoAlt } from 'react-
 import { MdEmail } from 'react-icons/md';
 import { motion } from 'framer-motion';
 import { BASE_API_URL } from '../../config/api';
-import { getUserProfile, currenUser, updateProfile } from '../../Redux/Auth/Action';
+import { getUserProfile, currenUser, updateProfile, logout } from '../../Redux/Auth/Action';
 import { setDarkMode } from '../../Redux/Theme/Action';
 import Post from './Post';
 import Navbar from './Navbar';
@@ -115,6 +115,19 @@ const UserProfile = () => {
         navigate('/update-profile'); // Redirect to show UserProfileCard.jsx popup
     };
 
+    const handleLogout = () => {
+        dispatch(logout());
+        navigate("/signin");
+    };
+
+    // Add this function to handle blog updates
+    const handleBlogUpdate = async () => {
+        const token = getToken();
+        if (token) {
+            await dispatch(fetchBlogs(0));
+        }
+    };
+
     return (
         <div className={`min-h-screen transition-colors duration-200 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
             <Navbar isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />
@@ -168,6 +181,12 @@ const UserProfile = () => {
                                                 >
                                                     Update Profile
                                                 </button>
+                                                <button
+                                                    onClick={handleLogout}
+                                                    className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-600"
+                                                >
+                                                    Logout
+                                                </button>
                                             </div>
                                         )}
                                     </div>
@@ -214,7 +233,8 @@ const UserProfile = () => {
                                     blog={blog}
                                     isDarkMode={isDarkMode}
                                     isUserProfile={true}
-                                    authUserId={displayUser?.id}
+                                    authUserId={displayUser?.id} // Make sure this is being passed
+                                    onBlogUpdate={handleBlogUpdate}
                                 />
                             ))}
                             {userPosts.length === 0 && (

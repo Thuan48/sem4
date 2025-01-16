@@ -1,5 +1,7 @@
 import { BASE_API_URL } from "../../config/api";
 import React, { useState } from 'react';
+import { useDispatch } from 'react-redux'; // Ensure useDispatch is imported
+import { deleteBlog, fetchBlogs } from '../../Redux/Blog/Action'; // Ensure actions are imported
 import { FaRegComment, FaRegHeart, FaHeart } from 'react-icons/fa';
 import { LazyLoadImage } from 'react-lazy-load-image-component';
 import Comment from './Comment';
@@ -9,8 +11,10 @@ import Slider from "react-slick";
 import { motion } from "framer-motion";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
+import EditBlog from './EditBlog';
 
-const Post = ({ blog, isDarkMode, isLiked, toggleLike, toggleComments, showComments, comments, onAddComment, authUserId, onDelete, onUpdate }) => {
+const Post = ({ blog, isDarkMode, isLiked, toggleLike, toggleComments, showComments, comments, onAddComment, authUserId, onBlogUpdate }) => {
+  const dispatch = useDispatch();
   const formatTimeAgo = (dateString) => {
     const now = new Date();
     const past = new Date(dateString);
@@ -36,6 +40,9 @@ const Post = ({ blog, isDarkMode, isLiked, toggleLike, toggleComments, showComme
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxImages, setLightboxImages] = useState([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const MAX_LENGTH = 100;
 
   const handleMenuOpen = (event) => {
     setAnchorEl(event.currentTarget);
@@ -43,6 +50,11 @@ const Post = ({ blog, isDarkMode, isLiked, toggleLike, toggleComments, showComme
 
   const handleMenuClose = () => {
     setAnchorEl(null);
+  };
+
+  const handleEdit = () => {
+    handleMenuClose();
+    setIsEditing(true);
   };
 
   const settings = {
@@ -60,6 +72,38 @@ const Post = ({ blog, isDarkMode, isLiked, toggleLike, toggleComments, showComme
         <ul className="slick-dots">{dots}</ul>
       </div>
     ),
+  };
+
+  const handleDelete = async (blogId) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        return;
+      }
+
+      // Show confirmation dialog
+      if (!window.confirm("Are you sure you want to delete this blog?")) {
+        return;
+      }
+
+      await dispatch(deleteBlog(blogId, token));
+      dispatch(fetchBlogs()); // Refresh the blog list
+
+    } catch (error) {
+      console.error("Delete failed:", error);
+    }
+  };
+
+  const handleEditComplete = async () => {
+    setIsEditing(false);
+    // Refresh the blogs list
+    const token = localStorage.getItem('token');
+    if (token) {
+      await dispatch(fetchBlogs(0));
+    }
+    if (props.onBlogUpdate) {
+      props.onBlogUpdate();
+    }
   };
 
   const renderImageCarousel = () => {
@@ -94,6 +138,33 @@ const Post = ({ blog, isDarkMode, isLiked, toggleLike, toggleComments, showComme
           </Slider>
         </div>
       </div>
+    );
+  };
+
+  const renderContent = () => {
+    if (!blog.content) return null;
+
+    const shouldTruncate = blog.content.length > MAX_LENGTH;
+
+    return (
+      <p className="text-gray-700 dark:text-gray-300 mb-4 text-left">
+        <span className="whitespace-pre-wrap">
+          {shouldTruncate && !isExpanded
+            ? `${blog.content.substring(0, MAX_LENGTH)}`
+            : blog.content}
+        </span>
+        {shouldTruncate && (
+          <>
+            {!isExpanded && <span>...</span>}
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="inline-block text-teal-600 hover:text-teal-700 dark:text-teal-400 dark:hover:text-teal-500 text-sm font-medium ml-1"
+            >
+              {isExpanded ? 'Show less' : 'Show more'}
+            </button>
+          </>
+        )}
+      </p>
     );
   };
 
@@ -132,17 +203,14 @@ const Post = ({ blog, isDarkMode, isLiked, toggleLike, toggleComments, showComme
                 transformOrigin={{ vertical: 'top', horizontal: 'right' }}
               >
                 <MenuItem
-                  onClick={() => {
-                    handleMenuClose();
-                    onUpdate(blog);
-                  }}
+                  onClick={handleEdit}
                 >
                   Edit
                 </MenuItem>
                 <MenuItem
                   onClick={() => {
                     handleMenuClose();
-                    onDelete(blog.id);
+                    handleDelete(blog.id);
                   }}
                 >
                   Delete
@@ -151,8 +219,7 @@ const Post = ({ blog, isDarkMode, isLiked, toggleLike, toggleComments, showComme
             </>
           )}
         </div>
-        <p className="text-gray-700 dark:text-gray-300 mb-4 whitespace-pre-wrap">{blog.content}</p>
-
+        {renderContent()} {/* Use only this for content rendering */}
         {renderImageCarousel()}
       </div>
       <div className="px-4 py-3 flex justify-between items-center border-t dark:border-gray-700">
@@ -184,6 +251,14 @@ const Post = ({ blog, isDarkMode, isLiked, toggleLike, toggleComments, showComme
             />
           </div>
         </div>
+      )}
+      {isEditing && (
+        <EditBlog
+          blog={blog}
+          onClose={() => setIsEditing(false)}
+          isDarkMode={isDarkMode}
+          onUpdate={handleEditComplete}
+        />
       )}
     </div>
   );

@@ -23,4 +23,8 @@ public interface BlogService {
   void deleteBlog(Integer id, User user);
 
   Page<Blog> getAllBlogs(int page, int size);
+
+  Blog updateBlog(Integer blogId, User user, BlogRequest blogRequest) throws Exception;
+
+  void validateBlogImages(BlogRequest blogRequest);
 }

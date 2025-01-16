@@ -7,6 +7,7 @@ import sem4.proj4.entity.User;
 
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Data
@@ -15,8 +16,9 @@ import java.util.List;
 public class BlogRequest {
     private String title;
     private String content;
-    private List<MultipartFile> images; // Changed from single image to List
-    private User userId; // Add this field
+    private List<MultipartFile> images;
+    private User userId;
+    private List<String> existingImages = new ArrayList<>(); // Initialize with empty list
 
     public List<MultipartFile> getImages() {
         return images;
@@ -24,5 +26,20 @@ public class BlogRequest {
 
     public void setImages(List<MultipartFile> images) {
         this.images = images;
+    }
+
+    public List<String> getExistingImages() {
+        return existingImages;
+    }
+
+    public void setExistingImages(List<String> existingImages) {
+        this.existingImages = existingImages;
+    }
+
+    // Add validation method
+    public void validate() {
+        if (content == null || content.trim().isEmpty()) {
+            throw new IllegalArgumentException("Content cannot be empty");
+        }
     }
 }

@@ -8,9 +8,10 @@ import {
 } from './Action';
 
 const initialState = {
-    loading: false,
     data: [],
+    loading: false,
     error: null,
+    blogs: [],
     currentPage: 0,
 };
 
@@ -20,12 +21,14 @@ const blogReducer = (state = initialState, action) => {
             return {
                 ...state,
                 loading: true,
+                error: '',
             };
         case FETCH_BLOGS_SUCCESS:
             return {
                 ...state,
                 loading: false,
-                data: action.payload.blogs, // Ensure 'blogs' contains 'images'
+                data: action.payload.blogs,  // Add this line
+                blogs: action.payload.blogs,
                 totalPages: action.payload.totalPages,
                 currentPage: action.payload.currentPage,
                 hasMore: action.payload.hasMore,
@@ -40,17 +43,21 @@ const blogReducer = (state = initialState, action) => {
         case CREATE_BLOG:
             return {
                 ...state,
-                data: [action.payload, ...state.data], // 'action.payload' should include 'images'
+                blogs: [action.payload, ...state.blogs],
                 loading: false,
                 error: null
             };
         case UPDATE_BLOG:
-            // ...existing code...
-            return state;
+            return {
+                ...state,
+                blogs: state.blogs.map(blog =>
+                    blog.id === action.payload.id ? action.payload : blog
+                ),
+            };
         case DELETE_BLOG:
             return {
                 ...state,
-                data: state.data.filter(blog => blog.id !== action.payload.blogId), // Corrected payload access
+                blogs: state.blogs.filter(blog => blog.id !== action.payload.blogId),
                 error: action.payload.error || null,
             };
         default:

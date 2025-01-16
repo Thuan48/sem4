@@ -8,6 +8,8 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.data.domain.Page;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.beans.factory.annotation.Value;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import sem4.proj4.entity.Blog;
 import sem4.proj4.entity.User;
@@ -136,5 +138,45 @@ public class BlogController {
         System.out.println("User attempting deletion: " + reqUser.getId()); // Add logging
         blogService.deleteBlog(blogId, reqUser);
         return new ResponseEntity<>(new ApiResponse("Blog deleted successfully", true), HttpStatus.OK);
+    }
+
+    @PutMapping("/update/{blogId}")
+    public ResponseEntity<?> updateBlog(
+            @PathVariable Integer blogId,
+            @RequestPart("content") String content,
+            @RequestPart(value = "images", required = false) List<MultipartFile> images,
+            @RequestPart(value = "existingImages", required = false) String existingImagesJson,
+            @RequestHeader("Authorization") String token) {
+        try {
+            String userId = TokenProvider.getEmailFromToken(token);
+            User user = userRepository.findByEmail(userId);
+            if (user == null) {
+                throw new RuntimeException("User not found");
+            }
+
+            // Create BlogRequest object
+            BlogRequest blogRequest = new BlogRequest();
+            blogRequest.setContent(content);
+            blogRequest.setImages(images);
+
+            // Parse existingImages JSON string carefully
+            if (existingImagesJson != null && !existingImagesJson.isEmpty()) {
+                ObjectMapper mapper = new ObjectMapper();
+                try {
+                    List<String> existingImages = mapper.readValue(existingImagesJson,
+                            new TypeReference<List<String>>() {
+                            });
+                    blogRequest.setExistingImages(existingImages);
+                } catch (Exception e) {
+                    throw new RuntimeException("Invalid existing images format");
+                }
+            }
+
+            Blog updatedBlog = blogService.updateBlog(blogId, user, blogRequest);
+            return ResponseEntity.ok(updatedBlog);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse("Error updating blog: " + e.getMessage(), false));
+        }
     }
 }
